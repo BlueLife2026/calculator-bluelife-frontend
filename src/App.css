@@ -482,7 +482,7 @@ tbody tr:hover {
 
 .water-body-editor {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1.3fr) auto;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1.3fr) minmax(130px, 0.8fr) auto;
   align-items: end;
   gap: 14px;
   padding: 16px;
