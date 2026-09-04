@@ -84,7 +84,6 @@ type WaterBody = {
   id: string;
   name: string;
   type: string;
-  size: string | null;
   active: boolean;
 };
 
@@ -205,7 +204,6 @@ type EditPropertyForm = {
   leadSource: string;
   propertyType: string;
   segment: string;
-  managementCompanyName: string;
 
   addressLine1: string;
   city: string;
@@ -235,13 +233,11 @@ type EditContactForm = ContactForm & {
 type WaterBodyForm = {
   name: string;
   type: string;
-  size: string;
 };
 
 const emptyWaterBodyForm: WaterBodyForm = {
   name: '',
   type: 'SWIMMING_POOL',
-  size: 'MEDIUM',
 };
 
 const emptyPropertyForm: PropertyForm = {
@@ -249,7 +245,6 @@ const emptyPropertyForm: PropertyForm = {
   leadSource: '',
   propertyType: '',
   segment: '',
-  managementCompanyName: '',
   addressLine1: '',
   city: '',
   county: '',
@@ -312,7 +307,6 @@ function propertyToForm(
     leadSource: property.leadSource ?? '',
     propertyType: property.propertyType ?? '',
     segment: property.segment ?? '',
-    managementCompanyName: property.managementCompany?.name ?? '',
 
     addressLine1: property.addressLine1 ?? '',
     city: property.city ?? '',
@@ -412,25 +406,6 @@ function WaterBodiesEditor({
                       onUpdate(index, 'name', event.target.value)
                     }
                   />
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor={`${idPrefix}-size-${index}`}>
-                    Size *
-                  </label>
-                  <select
-                    id={`${idPrefix}-size-${index}`}
-                    value={body.size}
-                    onChange={(event) =>
-                      onUpdate(index, 'size', event.target.value)
-                    }
-                  >
-                    <option value="">Select size</option>
-                    <option value="SMALL">Small</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LARGE">Large</option>
-                    <option value="EXTRA_LARGE">Extra Large</option>
-                  </select>
                 </div>
 
                 <button
@@ -599,19 +574,11 @@ function App() {
     useState<WaterBodyForm[]>([]);
 
   const createWaterBodiesAreValid = createWaterBodies.every(
-    (waterBody) => Boolean(
-      waterBody.type &&
-      waterBody.size &&
-      waterBody.name.trim(),
-    ),
+    (waterBody) => Boolean(waterBody.type && waterBody.name.trim()),
   );
 
   const editWaterBodiesAreValid = editWaterBodies.every(
-    (waterBody) => Boolean(
-      waterBody.type &&
-      waterBody.size &&
-      waterBody.name.trim(),
-    ),
+    (waterBody) => Boolean(waterBody.type && waterBody.name.trim()),
   );
 
   const normalizedContactEmails = createContacts.map((contact) =>
@@ -908,7 +875,6 @@ function App() {
       selectedProperty.waterBodies.map((waterBody) => ({
         name: waterBody.name,
         type: waterBody.type,
-        size: waterBody.size ?? 'MEDIUM',
       })),
     );
 
@@ -1093,9 +1059,6 @@ function App() {
             county: createForm.county.trim(),
             state: createForm.state.trim(),
             zipCode: createForm.zipCode.trim(),
-            managementCompanyName:
-              createForm.managementCompanyName.trim() ||
-              undefined,
             maintenanceChiefInfo:
               createForm.maintenanceChiefInfo.trim() ||
               undefined,
@@ -1110,7 +1073,6 @@ function App() {
             waterBodies: createWaterBodies.map((waterBody) => ({
               name: waterBody.name.trim(),
               type: waterBody.type,
-              size: waterBody.size || undefined,
               active: true,
             })),
           }),
@@ -1304,9 +1266,9 @@ function App() {
           name: body.name,
           type,
           include: body.active,
-          category: body.size ?? (type === 'SWIMMING_POOL' ? 'MEDIUM' : 'MEDIUM'),
+          category: type === 'SWIMMING_POOL' ? 'SMALL' : '',
           monthlyPrice: type === 'SWIMMING_POOL'
-            ? poolPrices[body.size ?? 'MEDIUM']?.[0] ?? 700
+            ? 600
             : automaticWaterBodyPrices[type] ?? 150,
           frequency: '3x Weekly',
           disinfectionSystem: false,
@@ -1635,8 +1597,6 @@ function App() {
               editForm.segment ||
               undefined,
 
-            managementCompanyName:
-              editForm.managementCompanyName.trim(),
 
             addressLine1:
               editForm.addressLine1 ||
@@ -1680,7 +1640,6 @@ function App() {
             waterBodies: editWaterBodies.map((waterBody) => ({
               name: waterBody.name.trim(),
               type: waterBody.type,
-              size: waterBody.size || undefined,
               active: true,
             })),
 
@@ -2298,23 +2257,6 @@ function App() {
 
               <div className="form-field">
                 <label>
-                  Management Company
-                </label>
-
-                <input
-                  value={editForm.managementCompanyName}
-                  onChange={(event) =>
-                    updateField(
-                      'managementCompanyName',
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Example: ABC Property Management"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>
                   Lead Source
                 </label>
 
@@ -2825,9 +2767,6 @@ function App() {
                           }
                         >
                           {formatLabel(waterBody.type)}: {waterBody.name}
-                          {waterBody.size
-                            ? ` · ${formatLabel(waterBody.size)}`
-                            : ''}
                         </span>
                       ),
                     )}
@@ -3336,7 +3275,7 @@ function App() {
                         <th aria-label="Include" />
                         <th>Water Body</th>
                         <th>Type</th>
-                        <th>Size</th>
+                        <th>Category</th>
                         <th>Frequency<br /><span className="table-heading-subtitle">Weekly</span></th>
                         <th>Disinfection</th>
                         <th>Access</th>
@@ -3375,20 +3314,21 @@ function App() {
                             </select>
                           </td>
                           <td>
-                            <select
-                              value={body.category}
-                              onChange={(event) =>
-                                updateProposalWaterBody(index, {
-                                  category: event.target.value,
-                                })
-                              }
-                            >
-                              <option value="">Select size</option>
-                              <option value="SMALL">Small</option>
-                              <option value="MEDIUM">Medium</option>
-                              <option value="LARGE">Large</option>
-                              <option value="EXTRA_LARGE">Extra Large</option>
-                            </select>
+                            {body.type === 'SWIMMING_POOL' ? (
+                              <select
+                                value={body.category}
+                                onChange={(event) =>
+                                  updateProposalWaterBody(index, {
+                                    category: event.target.value,
+                                  })
+                                }
+                              >
+                                <option value="SMALL">Small</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LARGE">Large</option>
+                                <option value="EXTRA_LARGE">Extra Large</option>
+                              </select>
+                            ) : '-'}
                           </td>
                           <td>
                             <select
@@ -3714,21 +3654,6 @@ function App() {
                     <option value="HOTEL">Hotel</option>
                     <option value="SINGLE_FAMILY">Single Family</option>
                   </select>
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="new-management">Management Company</label>
-                  <input
-                    id="new-management"
-                    value={createForm.managementCompanyName}
-                    onChange={(event) =>
-                      updateCreateField(
-                        'managementCompanyName',
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Example: ABC Property Management"
-                  />
                 </div>
 
                 <div className="form-field">
