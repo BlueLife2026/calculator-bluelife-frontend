@@ -233,6 +233,7 @@ type EditContactForm = ContactForm & {
 };
 
 type WaterBodyForm = {
+  id?: string;
   name: string;
   type: string;
   size: string;
@@ -464,7 +465,7 @@ function WaterBodiesEditor({
                     />
                     <small className="water-body-photo-help">
                       {body.photoFiles?.length
-                        ? `${body.photoFiles.length} photo${body.photoFiles.length === 1 ? '' : 's'} selected. They will be uploaded after the property is created.`
+                        ? `${body.photoFiles.length} photo${body.photoFiles.length === 1 ? '' : 's'} selected. They will be uploaded when you save the property.`
                         : 'Select one or more photos for this water body.'}
                     </small>
                   </div>
@@ -476,6 +477,37 @@ function WaterBodiesEditor({
       </div>
     </>
   );
+}
+
+async function uploadWaterBodyPhotoFiles(
+  propertyId: string,
+  waterBodyId: string,
+  files: File[],
+) {
+  let failures = 0;
+
+  for (const file of files) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      const response = await fetch(
+        `${API_URL}/properties/${propertyId}/water-bodies/${waterBodyId}/photos`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Photo upload failed (${response.status})`);
+      }
+    } catch (error) {
+      failures += 1;
+      console.error(error);
+    }
+  }
+
+  return failures;
 }
 
 function App() {
@@ -935,9 +967,11 @@ function App() {
     );
     setEditWaterBodies(
       selectedProperty.waterBodies.map((waterBody) => ({
+        id: waterBody.id,
         name: waterBody.name,
         type: waterBody.type,
         size: waterBody.size ?? 'MEDIUM',
+        photoFiles: [],
       })),
     );
 
@@ -1014,18 +1048,20 @@ function App() {
     );
   }
 
-  function selectCreateWaterBodyPhotos(
+  function selectWaterBodyPhotos(
+    mode: 'create' | 'edit',
     index: number,
     files: File[],
   ) {
-    setCreateWaterBodies((current) =>
+    const setter = mode === 'create' ? setCreateWaterBodies : setEditWaterBodies;
+    setter((current) =>
       current.map((waterBody, waterBodyIndex) =>
         waterBodyIndex === index
           ? { ...waterBody, photoFiles: files }
           : waterBody,
       ),
     );
-    setCreateError('');
+    if (mode === 'create') setCreateError('');
   }
 
   function addWaterBody(mode: 'create' | 'edit') {
@@ -1183,29 +1219,11 @@ function App() {
           continue;
         }
         usedWaterBodyIds.add(createdWaterBody.id);
-
-        for (const file of files) {
-          try {
-            const formData = new FormData();
-            formData.append('file', file, file.name);
-            const uploadResponse = await fetch(
-              `${API_URL}/properties/${createdProperty.id}/water-bodies/${createdWaterBody.id}/photos`,
-              {
-                method: 'POST',
-                body: formData,
-              },
-            );
-
-            if (!uploadResponse.ok) {
-              throw new Error(
-                `Photo upload failed (${uploadResponse.status})`,
-              );
-            }
-          } catch (error) {
-            photoUploadFailures += 1;
-            console.error(error);
-          }
-        }
+        photoUploadFailures += await uploadWaterBodyPhotoFiles(
+          createdProperty.id,
+          createdWaterBody.id,
+          files,
+        );
       }
 
       setProperties((current) =>
@@ -1799,14 +1817,38 @@ function App() {
           `${API_URL}/properties/${selectedProperty.id}`,
         );
 
-      let completeProperty =
-        updatedProperty;
-
+      let completeProperty: Property =
+        updatedProperty as Property;
       if (
         refreshedResponse.ok
       ) {
         completeProperty =
           await refreshedResponse.json();
+      }
+
+      let photoUploadFailures = 0;
+      const usedWaterBodyIds = new Set<string>();
+      for (const formWaterBody of editWaterBodies) {
+        const files = formWaterBody.photoFiles ?? [];
+        if (files.length === 0) continue;
+
+        const updatedWaterBody = completeProperty.waterBodies.find(
+          (candidate) =>
+            candidate.name === formWaterBody.name.trim() &&
+            !usedWaterBodyIds.has(candidate.id),
+        );
+
+        if (!updatedWaterBody) {
+          photoUploadFailures += files.length;
+          continue;
+        }
+
+        usedWaterBodyIds.add(updatedWaterBody.id);
+        photoUploadFailures += await uploadWaterBodyPhotoFiles(
+          completeProperty.id,
+          updatedWaterBody.id,
+          files,
+        );
       }
 
       setSelectedProperty(
@@ -1827,6 +1869,12 @@ function App() {
       setEditForm(null);
       setEditContacts([]);
       setEditWaterBodies([]);
+
+      if (photoUploadFailures > 0) {
+        window.alert(
+          `Property saved, but ${photoUploadFailures} photo${photoUploadFailures === 1 ? '' : 's'} could not be uploaded. You can try again later.`,
+        );
+      }
     } catch (error) {
       console.error(error);
 
@@ -2691,6 +2739,9 @@ function App() {
                   updateWaterBody('edit', index, field, value)
                 }
                 onRemove={(index) => removeWaterBody('edit', index)}
+                onFilesSelected={(index, files) =>
+                  selectWaterBodyPhotos('edit', index, files)
+                }
               />
 
             </div>
@@ -3896,7 +3947,9 @@ function App() {
                     updateWaterBody('create', index, field, value)
                   }
                   onRemove={(index) => removeWaterBody('create', index)}
-                  onFilesSelected={selectCreateWaterBodyPhotos}
+                  onFilesSelected={(index, files) =>
+                    selectWaterBodyPhotos('create', index, files)
+                  }
                 />
 
                 <div className="form-section-title form-field-wide">
