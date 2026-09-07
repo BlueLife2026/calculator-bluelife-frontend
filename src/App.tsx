@@ -114,7 +114,7 @@ type ProposalWaterBody = {
   monthlyPrice: number;
   frequency: string;
   disinfectionSystem: boolean;
-  accessDifficulty: 'EASY' | 'MEDIUM' | 'DIFFICULT';
+  accessDifficulty: 'SIMPLE' | 'COMPLEX';
   priceManuallyAdjusted: boolean;
   priceMode: 'SUGGESTED' | 'CUSTOM';
 };
@@ -142,9 +142,8 @@ const frequencyMultipliers: Record<string, number> = {
 };
 
 const accessMultipliers: Record<ProposalWaterBody['accessDifficulty'], number> = {
-  EASY: 1,
-  MEDIUM: 1.03,
-  DIFFICULT: 1.06,
+  SIMPLE: 1.03,
+  COMPLEX: 1.05,
 };
 
 function calculateWaterBodyPrice(body: ProposalWaterBody) {
@@ -1382,7 +1381,7 @@ function App() {
             : automaticWaterBodyPrices[type] ?? 150,
           frequency: '3x Weekly',
           disinfectionSystem: true,
-          accessDifficulty: 'EASY',
+          accessDifficulty: 'SIMPLE',
           priceManuallyAdjusted: false,
           priceMode: 'SUGGESTED',
         };
@@ -3529,9 +3528,8 @@ function App() {
                                 })
                               }
                             >
-                              <option value="EASY">Easy</option>
-                              <option value="MEDIUM">Medium</option>
-                              <option value="DIFFICULT">Difficult</option>
+                              <option value="SIMPLE">Simple</option>
+                              <option value="COMPLEX">Complex</option>
                             </select>
                           </td>
                           <td>
