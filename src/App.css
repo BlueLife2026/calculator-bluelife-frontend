@@ -1364,6 +1364,16 @@ tbody tr:hover {
   border-radius: 12px;
 }
 
+.map-loading-state {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #eef7fb;
+  color: #667085;
+  font-size: 13px;
+  text-align: center;
+}
+
 .proposal-map-wrap {
   position: relative;
   margin-bottom: 22px;

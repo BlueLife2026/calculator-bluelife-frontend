@@ -576,6 +576,7 @@ function App() {
     ProposalWaterBody[]
   >([]);
   const [routeDistanceMiles, setRouteDistanceMiles] = useState<number | null>(null);
+  const [routeMapUrl, setRouteMapUrl] = useState<string | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState('');
   const [fuelPricePerGallon, setFuelPricePerGallon] = useState('3.50');
@@ -1362,6 +1363,7 @@ function App() {
 
   async function loadRouteDistance(destination: string) {
     setRouteDistanceMiles(null);
+    setRouteMapUrl(null);
     setRouteError('');
     if (!destination.trim()) {
       setRouteError('Property address is not available.');
@@ -1390,6 +1392,13 @@ function App() {
       const meters = routeData.routes?.[0]?.distance;
       if (!meters) throw new Error('No driving route found');
       setRouteDistanceMiles(Number((meters / 1609.344).toFixed(1)));
+      const centerLat = (origin.lat + target.lat) / 2;
+      const centerLon = (origin.lon + target.lon) / 2;
+      setRouteMapUrl(
+        `https://map.project-osrm.org/?z=14&center=${centerLat},${centerLon}` +
+          `&loc=${origin.lat},${origin.lon}&loc=${target.lat},${target.lon}` +
+          '&hl=en&alt=0&srv=0',
+      );
     } catch (error) {
       console.error(error);
       setRouteError('Distance unavailable. Check the property address.');
@@ -3342,29 +3351,34 @@ function App() {
               </div>
 
               <div className="proposal-map-wrap">
-                <iframe
-                  className="property-map"
-                  title={`Map of ${selectedProperty.name}`}
-                  loading="lazy"
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(
-                    `${serviceBaseAddress} to ${[selectedProperty.addressLine1, selectedProperty.city,
-                      selectedProperty.state, selectedProperty.zipCode]
-                      .filter(Boolean)
-                      .join(', ')}`,
-                  )}&output=embed`}
-                />
-                <div className="map-price-pin">
-                  <span>Monthly Proposal</span>
-                  <strong>${monthlyInvestment.toLocaleString('en-US')}</strong>
-                </div>
+                {routeMapUrl ? (
+                  <iframe
+                    className="property-map"
+                    title={`OSRM route map for ${selectedProperty.name}`}
+                    loading="lazy"
+                    src={routeMapUrl}
+                  />
+                ) : (
+                  <div className="property-map map-loading-state">
+                    {routeLoading
+                      ? 'Loading route map...'
+                      : routeError || 'Route map unavailable'}
+                  </div>
+                )}
+                {routeMapUrl && (
+                  <div className="map-price-pin">
+                    <span>Monthly Proposal</span>
+                    <strong>${monthlyInvestment.toLocaleString('en-US')}</strong>
+                  </div>
+                )}
               </div>
               <div className="route-distance-card">
-                <span>Route from {serviceBaseAddress}</span>
+                <span>One-way route from {serviceBaseAddress}</span>
                 <strong>
                   {routeLoading
                     ? 'Calculating route...'
                     : routeDistanceMiles !== null
-                      ? `${routeDistanceMiles.toLocaleString('en-US')} miles traveled`
+                      ? `${routeDistanceMiles.toLocaleString('en-US')} miles one way`
                       : routeError || 'Distance not available'}
                 </strong>
               </div>
