@@ -603,7 +603,9 @@ function App() {
   const baseMonthlyPriceWithTransportation = baseMonthlyPrice + monthlyTransportationCost;
   const adjustmentPercentage =
     managementStatus === 'VIP'
-      ? Math.min(100, Math.max(0, Number(adjustments || 0)))
+      ? 25
+      : managementStatus === 'NEGOTIATED'
+        ? Math.min(100, Math.max(0, Number(adjustments || 0)))
       : 0;
   const monthlyInvestment = Math.ceil(
     baseMonthlyPriceWithTransportation * (1 - adjustmentPercentage / 100),
@@ -1468,7 +1470,9 @@ function App() {
           `• ${body.name} | ${body.frequency}`,
       ),
       managementStatus === 'VIP'
-        ? '• Preferred Management Partner Pricing Applied'
+        ? '• VIP pricing applied: fixed 25% discount'
+        : managementStatus === 'NEGOTIATED' && adjustmentPercentage > 0
+          ? `• Negotiated discount applied: ${adjustmentPercentage}%`
         : '',
       proposalNotes.trim() ? `• Additional notes: ${proposalNotes.trim()}` : '',
       '',
@@ -3389,15 +3393,33 @@ function App() {
                   <select
                     value={managementStatus}
                     onChange={(event) => {
-                      setManagementStatus(event.target.value);
-                      if (event.target.value !== 'VIP') setAdjustments('0');
+                      const status = event.target.value;
+                      setManagementStatus(status);
+                      setAdjustments(
+                        status === 'VIP'
+                          ? '25'
+                          : status === 'CURRENT'
+                            ? '0'
+                            : '',
+                      );
                     }}
                   >
                     <option value="CURRENT">Current</option>
-                    <option value="VIP">VIP</option>
+                    <option value="VIP">VIP (25% discount)</option>
+                    <option value="NEGOTIATED">Negotiated</option>
                   </select>
                 </div>
                 {managementStatus === 'VIP' && (
+                  <div className="form-field">
+                    <label>Adjustment Discount (%)</label>
+                    <input
+                      type="number"
+                      value="25"
+                      readOnly
+                    />
+                  </div>
+                )}
+                {managementStatus === 'NEGOTIATED' && (
                   <div className="form-field">
                     <label>Adjustment Discount (%)</label>
                     <input
@@ -3591,7 +3613,10 @@ function App() {
                   <span>Water Bodies Monthly Subtotal</span>
                   <strong>${waterBodiesMonthlyInvestment.toLocaleString('en-US')} / month</strong>
                   {managementStatus === 'VIP' && (
-                    <small>Preferred Management Partner Pricing Applied</small>
+                    <small>VIP pricing applied: fixed 25% discount</small>
+                  )}
+                  {managementStatus === 'NEGOTIATED' && adjustmentPercentage > 0 && (
+                    <small>Negotiated discount applied: {adjustmentPercentage}%</small>
                   )}
                 </div>
               </div>
