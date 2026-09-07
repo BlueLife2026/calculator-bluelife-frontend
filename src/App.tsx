@@ -88,22 +88,25 @@ type WaterBody = {
   active: boolean;
 };
 
+type SalesActivityStatus = 'CREATED' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
 type SalesActivity = {
   id: string;
   type: string;
   occurredAt: string;
   notes: string | null;
-  status: 'CREATED' | 'SENT' | 'APPROVED' | 'REJECTED';
+  status: SalesActivityStatus;
   sentAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
 };
 
-const proposalBoardStatuses: SalesActivity['status'][] = [
+const proposalBoardStatuses: SalesActivityStatus[] = [
   'CREATED',
   'SENT',
   'APPROVED',
   'REJECTED',
+  'EXPIRED',
 ];
 
 type ProposalWaterBody = {
@@ -480,6 +483,10 @@ function WaterBodiesEditor({
       </div>
     </>
   );
+}
+
+function proposalStatusLabel(status: SalesActivityStatus) {
+  return status === 'SENT' ? 'Sent - No Response' : formatLabel(status);
 }
 
 async function uploadWaterBodyPhotoFiles(
@@ -1559,7 +1566,7 @@ function App() {
 
   async function updateProposalStatus(
     activityId: string,
-    status: 'SENT' | 'APPROVED' | 'REJECTED',
+    status: Exclude<SalesActivityStatus, 'CREATED'>,
   ) {
     if (!selectedProperty) return null;
     const response = await fetch(
@@ -3045,7 +3052,7 @@ function App() {
                         <section className="proposal-board-column" key={status}>
                           <div className="proposal-board-heading">
                             <span className={`proposal-board-dot status-${status.toLowerCase()}`} />
-                            <h3>{formatLabel(status)}</h3>
+                            <h3>{proposalStatusLabel(status)}</h3>
                             <strong>{activities.length}</strong>
                           </div>
                           <div className="proposal-board-cards">
@@ -3119,7 +3126,7 @@ function App() {
                           <span><b>Approved:</b> {activity.approvedAt ? new Date(activity.approvedAt).toLocaleString('en-US') : 'Not approved yet'}</span>
                           <span><b>Rejected:</b> {activity.rejectedAt ? new Date(activity.rejectedAt).toLocaleString('en-US') : 'Not rejected yet'}</span>
                           <span className={`proposal-status status-${(activity.status ?? 'CREATED').toLowerCase()}`}>
-                            {formatLabel(activity.status ?? 'CREATED')}
+                            {proposalStatusLabel(activity.status ?? 'CREATED')}
                           </span>
                         </div>
                         <textarea
@@ -3160,23 +3167,25 @@ function App() {
                               window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;
                             }}
                           >
-                            {activity.status === 'SENT' || activity.status === 'APPROVED'
+                            {activity.status === 'SENT' || activity.status === 'APPROVED' || activity.status === 'EXPIRED'
                               ? 'Send Again'
                               : 'Send Proposal'}
                           </button>
                           <label className="status-control">
                             <select
-                              value={activity.status === 'APPROVED' || activity.status === 'REJECTED' ? activity.status : ''}
+                              value={activity.status === 'SENT' || activity.status === 'APPROVED' || activity.status === 'REJECTED' || activity.status === 'EXPIRED' ? activity.status : ''}
                               onChange={(event) =>
                                 event.target.value && updateProposalStatus(
                                   activity.id,
-                                  event.target.value as 'APPROVED' | 'REJECTED',
+                                  event.target.value as Exclude<SalesActivityStatus, 'CREATED'>,
                                 )
                               }
                             >
                               <option value="">Set status...</option>
+                              <option value="SENT">Sent - No Response</option>
                               <option value="APPROVED">Approved</option>
                               <option value="REJECTED">Rejected</option>
+                              <option value="EXPIRED">Expired</option>
                             </select>
                           </label>
                           <button
@@ -4173,9 +4182,9 @@ function App() {
           <div className="dashboard-chart-card proposal-status-chart">
             <h3>Proposals by status</h3>
             <div className="status-summary-list">
-              {['CREATED', 'SENT', 'APPROVED', 'REJECTED'].map((status) => (
+              {proposalBoardStatuses.map((status) => (
                 <div key={status}>
-                  <span className={`proposal-status status-${status.toLowerCase()}`}>{formatLabel(status)}</span>
+                  <span className={`proposal-status status-${status.toLowerCase()}`}>{proposalStatusLabel(status)}</span>
                   <strong>{dashboardStats.proposalCounts[status] ?? 0}</strong>
                 </div>
               ))}

@@ -1087,6 +1087,7 @@ tbody tr:hover {
 .proposal-board-dot.status-sent { background: #0ea5e9; }
 .proposal-board-dot.status-approved { background: #22c55e; }
 .proposal-board-dot.status-rejected { background: #ef4444; }
+.proposal-board-dot.status-expired { background: #f59e0b; }
 
 .proposal-board-cards {
   display: flex;
@@ -1293,6 +1294,11 @@ tbody tr:hover {
 .status-rejected {
   background: #fee4e2;
   color: #b42318;
+}
+
+.status-expired {
+  background: #fff4ce;
+  color: #92400e;
 }
 
 .status-control {
