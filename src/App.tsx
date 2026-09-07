@@ -574,7 +574,6 @@ function App() {
   const [showProposalReminders, setShowProposalReminders] = useState(false);
   const [reminderReferenceTime, setReminderReferenceTime] = useState(() => Date.now());
   const [focusedReminderActivityId, setFocusedReminderActivityId] = useState<string | null>(null);
-  const [showDemoReminder, setShowDemoReminder] = useState(true);
   const [savingProposal, setSavingProposal] = useState(false);
   const [previewActivityId, setPreviewActivityId] = useState<string | null>(null);
   const [proposalDraftNotes, setProposalDraftNotes] = useState('');
@@ -881,12 +880,13 @@ function App() {
 
     return properties.flatMap((property) =>
       property.salesActivities
-        .filter((activity) =>
-          activity.type === 'PROPOSAL' &&
-          activity.status === 'SENT' &&
-          Boolean(activity.sentAt) &&
-          new Date(activity.sentAt as string).getTime() <= followUpThreshold,
-        )
+        .filter((activity) => {
+          if (activity.type !== 'PROPOSAL') return false;
+          if (activity.status === 'EXPIRED') return true;
+          return activity.status === 'SENT' &&
+            Boolean(activity.sentAt) &&
+            new Date(activity.sentAt as string).getTime() <= followUpThreshold;
+        })
         .map((activity) => ({
           activity,
           property,
@@ -894,25 +894,10 @@ function App() {
         })),
     ).sort(
       (first, second) =>
-        new Date(first.activity.sentAt as string).getTime() -
-        new Date(second.activity.sentAt as string).getTime(),
+        new Date(first.activity.sentAt ?? first.activity.occurredAt).getTime() -
+        new Date(second.activity.sentAt ?? second.activity.occurredAt).getTime(),
     );
   }, [properties, reminderReferenceTime]);
-
-  const demoReminder = (() => {
-    for (const property of properties) {
-      const activity = property.salesActivities.find((item) => item.type === 'PROPOSAL');
-      if (!activity) continue;
-
-      return {
-        activity,
-        property,
-        contact: property.contacts.find((contact) => contact.isPrimary) ?? property.contacts[0],
-      };
-    }
-
-    return null;
-  })();
 
   async function openProperty(
     id: string,
@@ -1564,40 +1549,54 @@ function App() {
     }
   }
 
+  async function updateProposalStatusForProperty(
+    propertyId: string,
+    activityId: string,
+    status: Exclude<SalesActivityStatus, 'CREATED'>,
+  ) {
+    try {
+      const response = await fetch(
+        `${API_URL}/properties/${propertyId}/sales-activities/${activityId}/status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        },
+      );
+      if (!response.ok) throw new Error('Could not update proposal status');
+
+      const updated: SalesActivity = await response.json();
+      if (activityId === focusedReminderActivityId && updated.status !== 'EXPIRED') {
+        setFocusedReminderActivityId(null);
+      }
+      const replaceActivity = (property: Property) => ({
+        ...property,
+        salesActivities: property.salesActivities.map((activity) =>
+          activity.id === updated.id ? updated : activity,
+        ),
+      });
+      setSelectedProperty((current) =>
+        current?.id === propertyId ? replaceActivity(current) : current,
+      );
+      setProperties((current) =>
+        current.map((property) =>
+          property.id === propertyId ? replaceActivity(property) : property,
+        ),
+      );
+      return updated;
+    } catch (error) {
+      console.error(error);
+      window.alert('The proposal status could not be updated.');
+      return null;
+    }
+  }
+
   async function updateProposalStatus(
     activityId: string,
     status: Exclude<SalesActivityStatus, 'CREATED'>,
   ) {
     if (!selectedProperty) return null;
-    const response = await fetch(
-      `${API_URL}/properties/${selectedProperty.id}/sales-activities/${activityId}/status`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      },
-    );
-    if (!response.ok) {
-      window.alert('The proposal status could not be updated.');
-      return null;
-    }
-    const updated: SalesActivity = await response.json();
-    if (activityId === focusedReminderActivityId && updated.status !== 'SENT') {
-      setFocusedReminderActivityId(null);
-    }
-    const replaceActivity = (property: Property) => ({
-      ...property,
-      salesActivities: property.salesActivities.map((activity) =>
-        activity.id === updated.id ? updated : activity,
-      ),
-    });
-    setSelectedProperty((current) => (current ? replaceActivity(current) : current));
-    setProperties((current) =>
-      current.map((property) =>
-        property.id === selectedProperty.id ? replaceActivity(property) : property,
-      ),
-    );
-    return updated;
+    return updateProposalStatusForProperty(selectedProperty.id, activityId, status);
   }
 
   async function saveProposalText(activityId: string, notes: string) {
@@ -2037,8 +2036,7 @@ function App() {
   }
 
   function renderProposalReminderCenter() {
-    const demoReminderCount = showDemoReminder && demoReminder ? 1 : 0;
-    const totalReminderCount = proposalReminders.length + demoReminderCount;
+    const totalReminderCount = proposalReminders.length;
 
     return (
       <div className="proposal-reminder-center">
@@ -2060,7 +2058,7 @@ function App() {
             <div className="proposal-reminder-header">
               <div>
                 <h2>Proposal follow-ups</h2>
-                <p>Sent over 30 days ago with no status response.</p>
+                <p>Overdue proposals and proposals marked expired.</p>
               </div>
               <button
                 type="button"
@@ -2079,44 +2077,17 @@ function App() {
               </div>
             ) : (
               <div className="proposal-reminder-list">
-                {showDemoReminder && demoReminder && (() => {
-                  const { activity, property, contact } = demoReminder;
-                  const contactName = [contact?.contact.firstName, contact?.contact.lastName]
-                    .filter(Boolean)
-                    .join(' ');
-
-                  return (
-                    <article className="proposal-reminder-item proposal-reminder-demo" key={`demo-${activity.id}`}>
-                      <button
-                        className="proposal-reminder-property"
-                        type="button"
-                        onClick={() => {
-                          setShowProposalReminders(false);
-                          void openProperty(property.id, activity.id);
-                        }}
-                      >
-                        <span>Demo · 31 days without response</span>
-                        <strong>{property.name}</strong>
-                        <small>{contactName || 'Primary contact'} · Test follow-up</small>
-                      </button>
-                      <button
-                        className="proposal-reminder-demo-dismiss"
-                        type="button"
-                        aria-label="Remove demo notification"
-                        onClick={() => setShowDemoReminder(false)}
-                      >
-                        &times;
-                      </button>
-                    </article>
-                  );
-                })()}
                 {proposalReminders.map(({ activity, property, contact }) => {
-                  const sentDate = new Date(activity.sentAt as string);
+                  const sentDate = new Date(activity.sentAt ?? activity.occurredAt);
                   const daysWaiting = Math.floor((reminderReferenceTime - sentDate.getTime()) / (24 * 60 * 60 * 1000));
                   const email = contact?.contact.email;
                   const contactName = [contact?.contact.firstName, contact?.contact.lastName]
                     .filter(Boolean)
                     .join(' ');
+                  const isExpired = activity.status === 'EXPIRED';
+                  const reminderLabel = isExpired
+                    ? 'Expired - awaiting action'
+                    : `${daysWaiting} days without response`;
 
                   return (
                     <article className="proposal-reminder-item" key={activity.id}>
@@ -2128,21 +2099,47 @@ function App() {
                           void openProperty(property.id, activity.id);
                         }}
                       >
-                        <span>{daysWaiting} days without response</span>
+                        <span>{reminderLabel}</span>
                         <strong>{property.name}</strong>
                         <small>
-                          {contactName || 'Primary contact'} · Sent {sentDate.toLocaleDateString('en-US')}
+                          {contactName || 'Primary contact'} · {isExpired ? 'Expired' : 'Sent'} {sentDate.toLocaleDateString('en-US')}
                         </small>
                       </button>
-                      {email ? (
-                        <a
-                          href={`mailto:${email}?subject=${encodeURIComponent(`Follow-up: Blue Life Pools Proposal - ${property.name}`)}`}
-                        >
-                          Follow up
-                        </a>
-                      ) : (
-                        <span className="proposal-reminder-no-email">No email</span>
-                      )}
+                      <div className="proposal-reminder-actions">
+                        {email ? (
+                          <button
+                            className="proposal-reminder-action proposal-reminder-action-primary"
+                            type="button"
+                            onClick={async () => {
+                              const updated = await updateProposalStatusForProperty(
+                                property.id,
+                                activity.id,
+                                'SENT',
+                              );
+                              if (!updated) return;
+                              setShowProposalReminders(false);
+                              const subject = `Blue Life Pools Proposal - ${property.name}`;
+                              const body = updated.notes ?? activity.notes ?? '';
+                              window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                            }}
+                          >
+                            Resend proposal
+                          </button>
+                        ) : (
+                          <span className="proposal-reminder-no-email">No email</span>
+                        )}
+                        {!isExpired && (
+                          <button
+                            className="proposal-reminder-action proposal-reminder-action-secondary"
+                            type="button"
+                            onClick={() => {
+                              void updateProposalStatusForProperty(property.id, activity.id, 'EXPIRED');
+                            }}
+                          >
+                            Mark expired
+                          </button>
+                        )}
+                      </div>
                     </article>
                   );
                 })}
@@ -2150,7 +2147,7 @@ function App() {
             )}
 
             <p className="proposal-reminder-note">
-              A reminder disappears when the proposal is marked Approved or Rejected.
+              A reminder disappears after resending, approval, or rejection. Expired proposals stay here until managed.
             </p>
           </aside>
         )}
@@ -3006,13 +3003,10 @@ function App() {
                   (activity) => activity.id === focusedReminderActivityId,
                 );
                 if (!reminderActivity) return null;
-                const isDemoFollowUp = showDemoReminder && demoReminder?.activity.id === reminderActivity.id;
-                const followUpSentAt = isDemoFollowUp
-                  ? new Date(reminderReferenceTime - 31 * 24 * 60 * 60 * 1000)
-                  : reminderActivity.sentAt
-                    ? new Date(reminderActivity.sentAt)
-                    : null;
-                if (!followUpSentAt) return null;
+                const isExpiredFollowUp = reminderActivity.status === 'EXPIRED';
+                const followUpSentAt = reminderActivity.sentAt
+                  ? new Date(reminderActivity.sentAt)
+                  : new Date(reminderActivity.occurredAt);
                 const daysWaiting = Math.floor(
                   (reminderReferenceTime - followUpSentAt.getTime()) /
                   (24 * 60 * 60 * 1000),
@@ -3021,9 +3015,11 @@ function App() {
                 return (
                   <div className="sales-follow-up-banner">
                     <div>
-                      <strong>{isDemoFollowUp ? 'Demo: this proposal needs follow-up' : 'This proposal needs follow-up'}</strong>
+                      <strong>{isExpiredFollowUp ? 'This proposal is marked expired' : 'This proposal needs follow-up'}</strong>
                       <span>
-                        Sent {followUpSentAt.toLocaleDateString('en-US')} · {daysWaiting} days without a recorded response
+                        {isExpiredFollowUp
+                          ? `Marked expired ${followUpSentAt.toLocaleDateString('en-US')} · ${daysWaiting} days since sent`
+                          : `Sent ${followUpSentAt.toLocaleDateString('en-US')} · ${daysWaiting} days without a recorded response`}
                       </span>
                     </div>
                     <button type="button" onClick={() => setFocusedReminderActivityId(null)}>

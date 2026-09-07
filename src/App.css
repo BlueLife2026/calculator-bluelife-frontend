@@ -833,23 +833,37 @@ tbody tr:hover {
   text-decoration: none;
 }
 
-.proposal-reminder-demo {
-  background: #fffcf5;
+.proposal-reminder-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
-.proposal-reminder-demo-dismiss {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid #fedf89;
-  border-radius: 50%;
-  background: white;
-  color: #b54708;
+.proposal-reminder-action {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.proposal-reminder-action-primary {
+  background: var(--bluelife-blue-dark);
+  color: white;
+}
+
+.proposal-reminder-action-secondary {
+  border: 1px solid #d0d5dd;
+  background: white;
+  color: #667085;
+}
+
+.proposal-reminder-action:hover {
+  filter: brightness(0.96);
 }
 
 .proposal-reminder-no-email {
@@ -2873,12 +2887,6 @@ tbody tr:hover,
 
   .proposal-reminder-property > span {
     line-height: 1.35;
-  }
-
-  .proposal-reminder-demo-dismiss {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
   }
 
   .property-detail-nav {
