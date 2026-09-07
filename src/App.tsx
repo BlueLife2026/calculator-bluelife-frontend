@@ -121,13 +121,13 @@ type ProposalWaterBody = {
 
 const poolPrices: Record<string, number[]> = {
   SMALL: [600],
-  MEDIUM: [700, 750, 800, 850, 900],
-  LARGE: [900, 1000, 1100, 1200],
-  EXTRA_LARGE: [1300, 1500, 1700, 2000],
+  MEDIUM: [700],
+  LARGE: [900],
+  EXTRA_LARGE: [1300],
 };
 
 const automaticWaterBodyPrices: Record<string, number> = {
-  SPA: 250,
+  SPA: 200,
   KIDDIE_POOL: 400,
   SPLASH_PAD: 400,
   DECORATIVE_WATER_FEATURE: 150,
@@ -156,11 +156,15 @@ function calculateWaterBodyPrice(body: ProposalWaterBody) {
   // Category prices are the 3x-weekly commercial base. Frequency may reduce
   // or increase that base; access and equipment conditions adjust it after.
   const disinfectionMultiplier = body.disinfectionSystem ? 1 : 1.05;
-  return basePrice * frequencyMultiplier * accessMultiplier * disinfectionMultiplier;
+  return Math.ceil(
+    basePrice * frequencyMultiplier * accessMultiplier * disinfectionMultiplier,
+  );
 }
 
 function effectiveWaterBodyPrice(body: ProposalWaterBody) {
-  return body.priceManuallyAdjusted ? body.monthlyPrice : calculateWaterBodyPrice(body);
+  return Math.ceil(
+    body.priceManuallyAdjusted ? body.monthlyPrice : calculateWaterBodyPrice(body),
+  );
 }
 
 function suggestedPricesForWaterBody(body: ProposalWaterBody) {
@@ -592,7 +596,9 @@ function App() {
   const mpg = Math.max(0, Number(vehicleMpg) || 0);
   const calculatedTransportationCost =
     routeDistanceMiles !== null && mpg > 0
-      ? (routeDistanceMiles * 2 * serviceVisitsPerWeek * 52 / 12 / mpg) * fuelPrice
+      ? Math.ceil(
+          (routeDistanceMiles * 2 * serviceVisitsPerWeek * 52 / 12 / mpg) * fuelPrice,
+        )
       : 0;
   const monthlyTransportationCost = calculatedTransportationCost;
   const baseMonthlyPriceWithTransportation = baseMonthlyPrice + monthlyTransportationCost;
@@ -600,10 +606,12 @@ function App() {
     managementStatus === 'VIP'
       ? Math.min(100, Math.max(0, Number(adjustments || 0)))
       : 0;
-  const monthlyInvestment =
-    baseMonthlyPriceWithTransportation * (1 - adjustmentPercentage / 100);
-  const waterBodiesMonthlyInvestment =
-    baseMonthlyPrice * (1 - adjustmentPercentage / 100);
+  const monthlyInvestment = Math.ceil(
+    baseMonthlyPriceWithTransportation * (1 - adjustmentPercentage / 100),
+  );
+  const waterBodiesMonthlyInvestment = Math.ceil(
+    baseMonthlyPrice * (1 - adjustmentPercentage / 100),
+  );
 
   const [
     editForm,
@@ -1373,7 +1381,7 @@ function App() {
             ? poolPrices[body.size ?? 'MEDIUM']?.[0] ?? 700
             : automaticWaterBodyPrices[type] ?? 150,
           frequency: '3x Weekly',
-          disinfectionSystem: false,
+          disinfectionSystem: true,
           accessDifficulty: 'EASY',
           priceManuallyAdjusted: false,
           priceMode: 'SUGGESTED',
@@ -1423,6 +1431,8 @@ function App() {
     const formattedInvestment = monthlyInvestment.toLocaleString('en-US', {
       style: 'currency',
       currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     });
     const serviceSubject =
       includedBodies.length === 1
@@ -3370,7 +3380,7 @@ function App() {
                 </div>
                 <div className="transport-subtotal investment-result">
                   <span>Monthly transportation</span>
-                  <strong>${monthlyTransportationCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  <strong>${monthlyTransportationCost.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>
                 </div>
               </div>
 
@@ -3545,11 +3555,11 @@ function App() {
                               }}
                             >
                               <option value={effectiveWaterBodyPrice(body)}>
-                                Calculated ${effectiveWaterBodyPrice(body).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                Calculated ${effectiveWaterBodyPrice(body).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                               </option>
                               {suggestedPricesForWaterBody(body).map((price) => (
                                 <option value={price} key={price}>
-                                  ${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  ${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                 </option>
                               ))}
                               <option value="CUSTOM">Custom amount...</option>
@@ -3559,9 +3569,9 @@ function App() {
                                 className="water-body-price-input"
                                 type="number"
                                 min="0"
-                                step="0.01"
+                                step="1"
                                 aria-label={`Custom monthly price for ${body.name}`}
-                                value={body.monthlyPrice.toFixed(2)}
+                                value={Math.ceil(body.monthlyPrice)}
                                 onChange={(event) =>
                                   updateProposalWaterBody(index, {
                                     monthlyPrice: Math.max(0, Number(event.target.value) || 0),
