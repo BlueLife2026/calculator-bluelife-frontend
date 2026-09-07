@@ -90,6 +90,13 @@ type WaterBody = {
 
 type SalesActivityStatus = 'CREATED' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 
+type ProposalFollowUp = {
+  id: string;
+  occurredAt: string;
+  notes: string | null;
+  channel: string;
+};
+
 type SalesActivity = {
   id: string;
   type: string;
@@ -99,6 +106,7 @@ type SalesActivity = {
   sentAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
+  followUps?: ProposalFollowUp[];
 };
 
 const proposalBoardStatuses: SalesActivityStatus[] = [
@@ -1599,6 +1607,49 @@ function App() {
     return updateProposalStatusForProperty(selectedProperty.id, activityId, status);
   }
 
+  async function recordProposalFollowUpForProperty(
+    propertyId: string,
+    activityId: string,
+    notes: string,
+    channel: 'EMAIL' | 'PHONE' | 'IN_PERSON' | 'OTHER',
+  ) {
+    try {
+      const response = await fetch(
+        `${API_URL}/properties/${propertyId}/sales-activities/${activityId}/follow-ups`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes, channel }),
+        },
+      );
+      if (!response.ok) throw new Error('Could not record proposal follow-up');
+
+      const updated: SalesActivity = await response.json();
+      if (activityId === focusedReminderActivityId) {
+        setFocusedReminderActivityId(null);
+      }
+      const replaceActivity = (property: Property) => ({
+        ...property,
+        salesActivities: property.salesActivities.map((activity) =>
+          activity.id === updated.id ? updated : activity,
+        ),
+      });
+      setSelectedProperty((current) =>
+        current?.id === propertyId ? replaceActivity(current) : current,
+      );
+      setProperties((current) =>
+        current.map((property) =>
+          property.id === propertyId ? replaceActivity(property) : property,
+        ),
+      );
+      return updated;
+    } catch (error) {
+      console.error(error);
+      window.alert('The proposal follow-up could not be recorded.');
+      return null;
+    }
+  }
+
   async function saveProposalText(activityId: string, notes: string) {
     if (!selectedProperty) return false;
     setSavingProposalText(true);
@@ -2104,6 +2155,9 @@ function App() {
                         <small>
                           {contactName || 'Primary contact'} · {isExpired ? 'Expired' : 'Sent'} {sentDate.toLocaleDateString('en-US')}
                         </small>
+                        <small>
+                          {activity.followUps?.length ?? 0} follow-up{(activity.followUps?.length ?? 0) === 1 ? '' : 's'} recorded
+                        </small>
                       </button>
                       <div className="proposal-reminder-actions">
                         {email ? (
@@ -2111,10 +2165,11 @@ function App() {
                             className="proposal-reminder-action proposal-reminder-action-primary"
                             type="button"
                             onClick={async () => {
-                              const updated = await updateProposalStatusForProperty(
+                              const updated = await recordProposalFollowUpForProperty(
                                 property.id,
                                 activity.id,
-                                'SENT',
+                                'Proposal resent by email.',
+                                'EMAIL',
                               );
                               if (!updated) return;
                               setShowProposalReminders(false);
@@ -3089,6 +3144,9 @@ function App() {
                             {activity.rejectedAt
                               ? ` · Rejected ${new Date(activity.rejectedAt).toLocaleDateString('en-US')}`
                               : ''}
+                            {activity.followUps?.length
+                              ? ` · ${activity.followUps.length} follow-up${activity.followUps.length === 1 ? '' : 's'}`
+                              : ''}
                           </small>
                         </button>
                       ),
@@ -3124,6 +3182,47 @@ function App() {
                           <span className={`proposal-status status-${(activity.status ?? 'CREATED').toLowerCase()}`}>
                             {proposalStatusLabel(activity.status ?? 'CREATED')}
                           </span>
+                          <span><b>Follow-ups:</b> {activity.followUps?.length ?? 0}</span>
+                        </div>
+                        <div className="proposal-follow-up-history">
+                          <div className="proposal-follow-up-history-header">
+                            <strong>Follow-up history</strong>
+                            <button
+                              className="proposal-reminder-action proposal-reminder-action-secondary"
+                              type="button"
+                              onClick={async () => {
+                                const note = window.prompt(
+                                  'What happened during this follow-up?',
+                                  '',
+                                );
+                                if (note === null) return;
+                                await recordProposalFollowUpForProperty(
+                                  selectedProperty.id,
+                                  activity.id,
+                                  note,
+                                  'OTHER',
+                                );
+                              }}
+                            >
+                              Log follow-up
+                            </button>
+                          </div>
+                          {(activity.followUps?.length ?? 0) > 0 ? (
+                            <ul>
+                              {activity.followUps?.map((followUp) => (
+                                <li key={followUp.id}>
+                                  <span>
+                                    {new Date(followUp.occurredAt).toLocaleString('en-US')}
+                                    {' · '}
+                                    {formatLabel(followUp.channel)}
+                                  </span>
+                                  {followUp.notes && <small>{followUp.notes}</small>}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>No follow-ups recorded yet.</p>
+                          )}
                         </div>
                         <textarea
                           className="email-preview-editor"
@@ -3157,7 +3256,14 @@ function App() {
                               if (!email || !notes) return;
                               const saved = await saveProposalText(activity.id, notes);
                               if (!saved) return;
-                              const updated = await updateProposalStatus(activity.id, 'SENT');
+                              const updated = activity.sentAt
+                                ? await recordProposalFollowUpForProperty(
+                                    selectedProperty.id,
+                                    activity.id,
+                                    'Proposal resent by email.',
+                                    'EMAIL',
+                                  )
+                                : await updateProposalStatus(activity.id, 'SENT');
                               if (!updated) return;
                               const subject = `Blue Life Pools Proposal - ${selectedProperty.name}`;
                               window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;

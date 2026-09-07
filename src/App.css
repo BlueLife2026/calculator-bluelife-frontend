@@ -1245,6 +1245,51 @@ tbody tr:hover {
   overflow-wrap: anywhere;
 }
 
+.proposal-follow-up-history {
+  margin: 0 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.proposal-follow-up-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #344054;
+  font-size: 12px;
+}
+
+.proposal-follow-up-history ul {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proposal-follow-up-history li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--bluelife-surface-soft);
+  color: #667085;
+  font-size: 11px;
+}
+
+.proposal-follow-up-history li small {
+  color: #344054;
+  white-space: pre-wrap;
+}
+
+.proposal-follow-up-history > p {
+  margin: 8px 0 0;
+  color: #98a2b3;
+  font-size: 11px;
+}
+
 .email-preview-body {
   max-height: 520px;
   overflow-y: auto;
