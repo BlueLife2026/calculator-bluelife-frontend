@@ -1001,10 +1001,6 @@ tbody tr:hover {
   order: 0;
 }
 
-.proposal-modal > .route-distance-card {
-  order: 1;
-}
-
 .proposal-modal > .proposal-water-bodies-card {
   order: 2;
 }
@@ -1364,16 +1360,6 @@ tbody tr:hover {
   border-radius: 12px;
 }
 
-.map-loading-state {
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #eef7fb;
-  color: #667085;
-  font-size: 13px;
-  text-align: center;
-}
-
 .proposal-map-wrap {
   position: relative;
   margin-bottom: 22px;
@@ -1418,25 +1404,6 @@ tbody tr:hover {
 .map-price-pin strong {
   font-size: 16px;
   white-space: nowrap;
-}
-
-.route-distance-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin: -10px 0 22px;
-  padding: 12px 14px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  background: #f9fafb;
-  color: #667085;
-  font-size: 12px;
-}
-
-.route-distance-card strong {
-  color: #17202a;
-  font-size: 13px;
-  text-align: right;
 }
 
 .transport-cost-card {
@@ -1512,6 +1479,11 @@ tbody tr:hover {
 
 .transport-formula {
   grid-column: 1 / -1;
+  color: #667085;
+  font-size: 12px;
+}
+
+.transport-distance-help {
   color: #667085;
   font-size: 12px;
 }
@@ -1891,15 +1863,6 @@ tbody tr:hover {
 
   .detail-card-wide {
     grid-column: auto;
-  }
-
-  .route-distance-card {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .route-distance-card strong {
-    text-align: left;
   }
 
   .transport-inputs {
@@ -2836,7 +2799,6 @@ th,
 .dashboard-kpi,
 .water-body-editor,
 .proposal-property-summary > div,
-.route-distance-card,
 .tag,
 .sku-code {
   background: var(--bluelife-surface-soft);

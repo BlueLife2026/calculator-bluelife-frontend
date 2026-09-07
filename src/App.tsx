@@ -576,12 +576,8 @@ function App() {
     ProposalWaterBody[]
   >([]);
   const [routeDistanceMiles, setRouteDistanceMiles] = useState<number | null>(null);
-  const [routeMapUrl, setRouteMapUrl] = useState<string | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [routeError, setRouteError] = useState('');
   const [fuelPricePerGallon, setFuelPricePerGallon] = useState('3.50');
   const [vehicleMpg, setVehicleMpg] = useState('25');
-  const [manualTransportationCost, setManualTransportationCost] = useState('');
 
   const baseMonthlyPrice = proposalWaterBodies
     .filter((body) => body.include)
@@ -598,10 +594,7 @@ function App() {
     routeDistanceMiles !== null && mpg > 0
       ? (routeDistanceMiles * 2 * serviceVisitsPerWeek * 52 / 12 / mpg) * fuelPrice
       : 0;
-  const monthlyTransportationCost =
-    routeDistanceMiles === null && manualTransportationCost.trim() !== ''
-      ? Math.max(0, Number(manualTransportationCost) || 0)
-      : calculatedTransportationCost;
+  const monthlyTransportationCost = calculatedTransportationCost;
   const baseMonthlyPriceWithTransportation = baseMonthlyPrice + monthlyTransportationCost;
   const adjustmentPercentage =
     managementStatus === 'VIP'
@@ -1361,55 +1354,9 @@ function App() {
     }
   }
 
-  async function loadRouteDistance(destination: string) {
-    setRouteDistanceMiles(null);
-    setRouteMapUrl(null);
-    setRouteError('');
-    if (!destination.trim()) {
-      setRouteError('Property address is not available.');
-      return;
-    }
-    setRouteLoading(true);
-    try {
-      const geocode = async (address: string) => {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`,
-        );
-        if (!response.ok) throw new Error('Geocoding failed');
-        const results = (await response.json()) as Array<{ lat: string; lon: string }>;
-        if (!results[0]) throw new Error(`Address not found: ${address}`);
-        return { lat: Number(results[0].lat), lon: Number(results[0].lon) };
-      };
-      const [origin, target] = await Promise.all([
-        geocode(serviceBaseAddress),
-        geocode(destination),
-      ]);
-      const routeResponse = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${target.lon},${target.lat}?overview=false`,
-      );
-      if (!routeResponse.ok) throw new Error('Route calculation failed');
-      const routeData = await routeResponse.json() as { routes?: Array<{ distance: number }> };
-      const meters = routeData.routes?.[0]?.distance;
-      if (!meters) throw new Error('No driving route found');
-      setRouteDistanceMiles(Number((meters / 1609.344).toFixed(1)));
-      const centerLat = (origin.lat + target.lat) / 2;
-      const centerLon = (origin.lon + target.lon) / 2;
-      setRouteMapUrl(
-        `https://map.project-osrm.org/?z=14&center=${centerLat},${centerLon}` +
-          `&loc=${origin.lat},${origin.lon}&loc=${target.lat},${target.lon}` +
-          '&hl=en&alt=0&srv=0',
-      );
-    } catch (error) {
-      console.error(error);
-      setRouteError('Distance unavailable. Check the property address.');
-    } finally {
-      setRouteLoading(false);
-    }
-  }
-
   function openProposal() {
     if (!selectedProperty) return;
-    setManualTransportationCost('');
+    setRouteDistanceMiles(null);
     setProposalWaterBodies(
       selectedProperty.waterBodies.map((body) => {
         const type = body.type === 'POOL'
@@ -1434,11 +1381,6 @@ function App() {
       }),
     );
     setShowProposal(true);
-    void loadRouteDistance(
-      [selectedProperty.addressLine1, selectedProperty.city, selectedProperty.state, selectedProperty.zipCode]
-        .filter(Boolean)
-        .join(', '),
-    );
   }
 
   function updateProposalWaterBody(
@@ -3351,36 +3293,21 @@ function App() {
               </div>
 
               <div className="proposal-map-wrap">
-                {routeMapUrl ? (
-                  <iframe
-                    className="property-map"
-                    title={`OSRM route map for ${selectedProperty.name}`}
-                    loading="lazy"
-                    src={routeMapUrl}
-                  />
-                ) : (
-                  <div className="property-map map-loading-state">
-                    {routeLoading
-                      ? 'Loading route map...'
-                      : routeError || 'Route map unavailable'}
-                  </div>
-                )}
-                {routeMapUrl && (
-                  <div className="map-price-pin">
-                    <span>Monthly Proposal</span>
-                    <strong>${monthlyInvestment.toLocaleString('en-US')}</strong>
-                  </div>
-                )}
-              </div>
-              <div className="route-distance-card">
-                <span>One-way route from {serviceBaseAddress}</span>
-                <strong>
-                  {routeLoading
-                    ? 'Calculating route...'
-                    : routeDistanceMiles !== null
-                      ? `${routeDistanceMiles.toLocaleString('en-US')} miles one way`
-                      : routeError || 'Distance not available'}
-                </strong>
+                <iframe
+                  className="property-map"
+                  title={`Google route map for ${selectedProperty.name}`}
+                  loading="lazy"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(
+                    `${serviceBaseAddress} to ${[selectedProperty.addressLine1, selectedProperty.city,
+                      selectedProperty.state, selectedProperty.zipCode]
+                      .filter(Boolean)
+                      .join(', ')}`,
+                  )}&output=embed`}
+                />
+                <div className="map-price-pin">
+                  <span>Monthly Proposal</span>
+                  <strong>${monthlyInvestment.toLocaleString('en-US')}</strong>
+                </div>
               </div>
 
               <div className="transport-cost-card">
@@ -3391,6 +3318,28 @@ function App() {
                   </div>
                 </div>
                 <div className="transport-inputs">
+                  <div className="form-field">
+                    <label htmlFor="google-distance-miles">
+                      Google Maps distance (miles, one way)
+                    </label>
+                    <input
+                      id="google-distance-miles"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="Example: 0.9"
+                      value={routeDistanceMiles ?? ''}
+                      onChange={(event) => {
+                        const value = event.target.value.trim();
+                        setRouteDistanceMiles(
+                          value === '' ? null : Math.max(0, Number(value) || 0),
+                        );
+                      }}
+                    />
+                    <small className="transport-distance-help">
+                      Enter the one-way value shown in Google Maps. The return trip is added automatically.
+                    </small>
+                  </div>
                   <div className="form-field">
                     <label htmlFor="fuel-price">Gas price ($ / gallon)</label>
                     <input
@@ -3421,20 +3370,7 @@ function App() {
                 </div>
                 <div className="transport-subtotal investment-result">
                   <span>Monthly transportation</span>
-                  {routeDistanceMiles === null && routeError ? (
-                    <input
-                      className="manual-transport-input"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Enter amount"
-                      aria-label="Manual monthly transportation cost"
-                      value={manualTransportationCost}
-                      onChange={(event) => setManualTransportationCost(event.target.value)}
-                    />
-                  ) : (
-                    <strong>${monthlyTransportationCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                  )}
+                  <strong>${monthlyTransportationCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                 </div>
               </div>
 
