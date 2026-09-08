@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { API_URL } from './api';
+import type { ProposalPdfData } from './proposalPdf';
+import { proposalServiceOptions, type ProposalService } from './proposalServices';
 import './App.css';
 
 type AppArea = 'home' | 'commercial' | 'estimates' | 'operations' | 'finance';
@@ -106,6 +108,7 @@ type SalesActivity = {
   sentAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
+  proposalData?: { services?: string[] } | null;
   followUps?: ProposalFollowUp[];
 };
 
@@ -592,6 +595,9 @@ function App() {
   const [proposalWaterBodies, setProposalWaterBodies] = useState<
     ProposalWaterBody[]
   >([]);
+  const [proposalServices, setProposalServices] = useState<ProposalService[]>(
+    () => [...proposalServiceOptions],
+  );
   const [routeDistanceMiles, setRouteDistanceMiles] = useState<number | null>(null);
   const [fuelPricePerGallon, setFuelPricePerGallon] = useState('3.50');
   const [vehicleMpg, setVehicleMpg] = useState('25');
@@ -1366,6 +1372,7 @@ function App() {
   function openProposal() {
     if (!selectedProperty) return;
     setRouteDistanceMiles(null);
+    setProposalServices([...proposalServiceOptions]);
     setProposalWaterBodies(
       selectedProperty.waterBodies.map((body) => {
         const type = body.type === 'POOL'
@@ -1457,10 +1464,7 @@ function App() {
       `We are pleased to present Blue Life Pools’ proposal for the monthly maintenance of the ${serviceSubject} at ${selectedProperty.name}. Our commitment is to provide professional, efficient, and high-quality service, ensuring that your facilities remain in optimal condition throughout the year.`,
       '',
       'Our proposal includes:',
-      '✔ Comprehensive and scheduled maintenance to ensure optimal performance.',
-      '✔ Regular monitoring and adjustment of chemical levels to maintain ideal water balance.',
-      '✔ Cleaning and inspection of equipment to maximize efficiency and extend its lifespan.',
-      '✔ Periodic reports on the condition of the facilities, providing full transparency and control.',
+      ...proposalServices.map((service) => `✔ ${service}`),
       '',
       `The monthly service fee is ${formattedInvestment}. This fee reflects our commitment to quality, reliability, and the support of a specialized team.`,
       '',
@@ -1485,12 +1489,66 @@ function App() {
     ].join('\n');
   }
 
+  function buildProposalPdfData(): ProposalPdfData | null {
+    if (!selectedProperty) return null;
+    const includedBodies = proposalWaterBodies.filter((body) => body.include);
+    const primaryContact =
+      selectedProperty.contacts.find((relation) => relation.isPrimary) ??
+      selectedProperty.contacts[0];
+    const contactName = [
+      primaryContact?.contact.firstName,
+      primaryContact?.contact.lastName,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const propertyAddress = [
+      selectedProperty.addressLine1,
+      selectedProperty.city,
+      selectedProperty.state,
+      selectedProperty.zipCode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    return {
+      proposalNumber: `BL-${new Date().getFullYear()}-${propertySku(selectedProperty.id).toUpperCase()}`,
+      proposalDate: new Date(),
+      clientName: selectedProperty.managementCompany?.name ?? '-',
+      propertyName: selectedProperty.name,
+      address: propertyAddress,
+      contactName: contactName || '-',
+      email: primaryContact?.contact.email ?? '-',
+      phone: primaryContact?.contact.phone ?? '-',
+      waterBodies: includedBodies.map((body) => ({
+        description: body.name,
+        type: [
+          formatLabel(body.type),
+          body.type === 'SWIMMING_POOL' && body.category
+            ? formatLabel(body.category)
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' - '),
+        frequency: body.frequency,
+        baseMonthlyCost: effectiveWaterBodyPrice(body),
+      })),
+      services: proposalServices,
+      monthlyTransportationCost,
+      discountPercentage: adjustmentPercentage,
+      totalMonthlyInvestment: monthlyInvestment,
+    };
+  }
+
   async function saveProposal(sendByEmail = false) {
     if (!selectedProperty || savingProposal) return;
 
     const includedBodies = proposalWaterBodies.filter((body) => body.include);
     if (includedBodies.length === 0) {
       window.alert('Include at least one water body in the proposal.');
+      return;
+    }
+    if (proposalServices.length === 0) {
+      window.alert('Select at least one service for the proposal.');
       return;
     }
 
@@ -1503,15 +1561,33 @@ function App() {
       return;
     }
     const notes = buildProposalEmailBody();
+    const pdfData = buildProposalPdfData();
 
     try {
       setSavingProposal(true);
+      const pdfModule = pdfData ? await import('./proposalPdf') : null;
+      const proposalData = pdfData
+        ? {
+            ...pdfData,
+            proposalDate: pdfData.proposalDate.toISOString(),
+            allocations: pdfModule?.allocateProposalCosts(
+              pdfData.waterBodies,
+              pdfData.monthlyTransportationCost,
+              pdfData.discountPercentage,
+              pdfData.totalMonthlyInvestment,
+            ),
+          }
+        : undefined;
       const response = await fetch(
         `${API_URL}/properties/${selectedProperty.id}/sales-activities`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'PROPOSAL', notes }),
+          body: JSON.stringify({
+            type: 'PROPOSAL',
+            notes,
+            proposalData,
+          }),
         },
       );
       if (!response.ok) throw new Error('Could not save proposal');
@@ -1545,6 +1621,14 @@ function App() {
       setPreviewActivityId(activity.id);
       setProposalDraftNotes(activity.notes ?? '');
       setShowProposal(false);
+      if (pdfData && pdfModule) {
+        try {
+          await pdfModule.downloadProposalPdf(pdfData);
+        } catch (pdfError) {
+          console.error(pdfError);
+          window.alert('The proposal was saved, but the PDF could not be generated. Please try again.');
+        }
+      }
       if (sendByEmail && recipientEmail) {
         const subject = `Blue Life Pools Proposal - ${selectedProperty.name}`;
         window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;
@@ -3732,6 +3816,50 @@ function App() {
                 </div>
               </div>
 
+              <div className="chemical-calculator proposal-services-card">
+                <div className="proposal-section-heading">
+                  <div>
+                    <h3>Included Services</h3>
+                    <p>Uncheck any service that is not included in this proposal.</p>
+                  </div>
+                  <div className="proposal-service-actions">
+                    <button
+                      type="button"
+                      onClick={() => setProposalServices([...proposalServiceOptions])}
+                      disabled={proposalServices.length === proposalServiceOptions.length}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProposalServices([])}
+                      disabled={proposalServices.length === 0}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="proposal-services-grid">
+                  {proposalServiceOptions.map((service) => (
+                    <label className="proposal-service-option" key={service}>
+                      <input
+                        type="checkbox"
+                        checked={proposalServices.includes(service)}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setProposalServices((current) =>
+                            proposalServiceOptions.filter((option) =>
+                              option === service ? checked : current.includes(option),
+                            ),
+                          );
+                        }}
+                      />
+                      <span>{service}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="form-field proposal-recommendation">
                 <label>Internal Notes (optional)</label>
                 <textarea
@@ -3759,7 +3887,7 @@ function App() {
                   onClick={() => saveProposal(false)}
                   disabled={savingProposal}
                 >
-                  {savingProposal ? 'Saving proposal...' : 'Save Proposal'}
+                  {savingProposal ? 'Saving & generating PDF...' : 'Save Proposal & Download PDF'}
                 </button>
               </div>
             </section>
