@@ -118,6 +118,10 @@ type SalesActivity = {
   emailDraftWebUrl?: string | null;
   emailDraftCreatedAt?: string | null;
   emailDraftFileName?: string | null;
+  proposalPdfSharepointId?: string | null;
+  proposalPdfSharepointUrl?: string | null;
+  proposalPdfFileName?: string | null;
+  proposalPdfUploadedAt?: string | null;
   followUps?: ProposalFollowUp[];
 };
 
@@ -680,6 +684,7 @@ function App() {
     activityId: string;
     action: 'CREATE' | 'EMAIL';
   } | null>(null);
+  const [showProposalFollowUps, setShowProposalFollowUps] = useState(false);
   const [previewActivityId, setPreviewActivityId] = useState<string | null>(null);
   const [proposalDraftNotes, setProposalDraftNotes] = useState('');
   const [, setSavingProposalText] = useState(false);
@@ -1690,7 +1695,47 @@ function App() {
     return updated;
   }
 
+  async function storeProposalPdfInSharePoint(
+    propertyId: string,
+    activity: SalesActivity,
+    pdf: { blob: Blob; fileName: string },
+  ) {
+    const formData = new FormData();
+    formData.append('file', pdf.blob, pdf.fileName);
+    const response = await fetch(
+      `${API_URL}/properties/${propertyId}/sales-activities/${activity.id}/pdf`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { message?: string } | null;
+      throw new Error(
+        result?.message ?? 'The proposal PDF could not be saved to SharePoint.',
+      );
+    }
+
+    const updated: SalesActivity = await response.json();
+    const replaceActivity = (property: Property) => ({
+      ...property,
+      salesActivities: property.salesActivities.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    });
+    setProperties((current) =>
+      current.map((property) =>
+        property.id === propertyId ? replaceActivity(property) : property,
+      ),
+    );
+    setSelectedProperty((current) =>
+      current?.id === propertyId ? replaceActivity(current) : current,
+    );
+    return updated;
+  }
+
   async function downloadProposalPdf(activity: SalesActivity) {
+    if (!selectedProperty) return;
     const proposalData = proposalPdfDataFromActivity(activity);
     if (!proposalData) {
       window.alert('This proposal does not have enough saved data to create its PDF.');
@@ -1701,6 +1746,7 @@ function App() {
       setProposalFileAction({ activityId: activity.id, action: 'CREATE' });
       const pdfModule = await import('./proposalPdf');
       const pdf = await pdfModule.createProposalPdf(proposalData);
+      await storeProposalPdfInSharePoint(selectedProperty.id, activity, pdf);
       const downloadUrl = URL.createObjectURL(pdf.blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -1711,7 +1757,11 @@ function App() {
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
     } catch (error) {
       console.error(error);
-      window.alert('The proposal PDF could not be created.');
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : 'The proposal PDF could not be created and saved.',
+      );
     } finally {
       setProposalFileAction(null);
     }
@@ -3466,13 +3516,64 @@ function App() {
                           <span className={`proposal-status status-${(activity.status ?? 'CREATED').toLowerCase()}`}>
                             {proposalStatusLabel(activity.status ?? 'CREATED')}
                           </span>
+                          <span>
+                            <b>PDF:</b>{' '}
+                            {activity.proposalPdfSharepointUrl ? (
+                              <a
+                                href={activity.proposalPdfSharepointUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Open in SharePoint
+                              </a>
+                            ) : (
+                              'Not created yet'
+                            )}
+                          </span>
                           <span><b>Follow-ups:</b> {activity.followUps?.length ?? 0}</span>
                         </div>
-                        <div className="proposal-follow-up-history">
-                          <div className="proposal-follow-up-history-header">
-                            <strong>Follow-up history</strong>
-                            <button
-                              className="proposal-reminder-action proposal-reminder-action-secondary"
+                        <div className="email-preview-body-layout">
+                          <textarea
+                            className="email-preview-editor"
+                            aria-label="Editable proposal email text"
+                            disabled={activity.status === 'APPROVED' || activity.status === 'REJECTED'}
+                            value={
+                              (previewActivityId === activity.id
+                                ? proposalDraftNotes
+                                : activity.notes) ?? ''
+                            }
+                            onChange={(event) => setProposalDraftNotes(event.target.value)}
+                            onBlur={() => {
+                              const notes = previewActivityId === activity.id
+                                ? proposalDraftNotes
+                                : activity.notes ?? '';
+                              if (notes !== (activity.notes ?? '')) {
+                                void saveProposalText(activity.id, notes);
+                              }
+                            }}
+                          />
+                          {showProposalFollowUps ? (
+                            <aside
+                              className="proposal-follow-up-drawer"
+                              id={`proposal-follow-ups-${activity.id}`}
+                              aria-label="Proposal follow-up history"
+                            >
+                              <div className="proposal-follow-up-drawer-header">
+                                <div>
+                                  <span>Follow-ups</span>
+                                  <strong>{activity.followUps?.length ?? 0}</strong>
+                                </div>
+                                <button
+                                  type="button"
+                                  aria-label="Hide follow-ups"
+                                  title="Hide follow-ups"
+                                  onClick={() => setShowProposalFollowUps(false)}
+                                >
+                                  &times;
+                                </button>
+                              </div>
+                              <button
+                              className="proposal-follow-up-log-button"
                               type="button"
                               onClick={async () => {
                                 const note = window.prompt(
@@ -3488,15 +3589,14 @@ function App() {
                                 );
                               }}
                             >
-                              Log follow-up
+                              + Log follow-up
                             </button>
-                          </div>
                           {(activity.followUps?.length ?? 0) > 0 ? (
-                            <ul>
+                            <ul className="proposal-follow-up-drawer-list">
                               {activity.followUps?.map((followUp) => (
                                 <li key={followUp.id}>
                                   <span>
-                                    {new Date(followUp.occurredAt).toLocaleString('en-US')}
+                                    {new Date(followUp.occurredAt).toLocaleDateString('en-US')}
                                     {' · '}
                                     {formatLabel(followUp.channel)}
                                   </span>
@@ -3505,28 +3605,24 @@ function App() {
                               ))}
                             </ul>
                           ) : (
-                            <p>No follow-ups recorded yet.</p>
+                            <p className="proposal-follow-up-drawer-empty">
+                              No follow-ups recorded yet.
+                            </p>
+                          )}
+                            </aside>
+                          ) : (
+                            <button
+                              className="proposal-follow-up-vertical-tab"
+                              type="button"
+                              aria-expanded="false"
+                              aria-controls={`proposal-follow-ups-${activity.id}`}
+                              onClick={() => setShowProposalFollowUps(true)}
+                            >
+                              <span>Follow-ups</span>
+                              <strong>{activity.followUps?.length ?? 0}</strong>
+                            </button>
                           )}
                         </div>
-                        <textarea
-                          className="email-preview-editor"
-                          aria-label="Editable proposal email text"
-                          disabled={activity.status === 'APPROVED' || activity.status === 'REJECTED'}
-                          value={
-                            (previewActivityId === activity.id
-                              ? proposalDraftNotes
-                              : activity.notes) ?? ''
-                          }
-                          onChange={(event) => setProposalDraftNotes(event.target.value)}
-                          onBlur={() => {
-                            const notes = previewActivityId === activity.id
-                              ? proposalDraftNotes
-                              : activity.notes ?? '';
-                            if (notes !== (activity.notes ?? '')) {
-                              void saveProposalText(activity.id, notes);
-                            }
-                          }}
-                        />
                         <div className="email-preview-actions">
                           <button
                             className="secondary-button"
