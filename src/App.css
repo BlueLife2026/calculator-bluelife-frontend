@@ -671,7 +671,7 @@ tbody tr:hover {
 
 .dashboard-kpis {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -2580,6 +2580,38 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.property-lifecycle-summary {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.property-lifecycle-summary small {
+  color: var(--bluelife-muted);
+  font-size: 11px;
+}
+
+.lifecycle-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lifecycle-client {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.lifecycle-lead {
+  background: #e0f2fe;
+  color: #075985;
 }
 
 .edit-panel {

@@ -236,6 +236,8 @@ type Property = {
   id: string;
   name: string;
   code: string | null;
+  lifecycleStatus: string;
+  serviceStartDate: string | null;
   leadSource: string | null;
   propertyType: string | null;
   segment: string | null;
@@ -902,6 +904,7 @@ function App() {
             property.state,
             property.segment,
             property.propertyType,
+            property.lifecycleStatus,
             property.managementCompany
               ?.name,
           ];
@@ -942,6 +945,9 @@ function App() {
       proposalCounts,
       totalProposals: Object.values(proposalCounts).reduce((sum, count) => sum + count, 0),
       propertyCount: filteredProperties.length,
+      clientCount: filteredProperties.filter(
+        (property) => property.lifecycleStatus === 'CLIENT',
+      ).length,
     };
   }, [filteredProperties]);
 
@@ -2494,6 +2500,7 @@ function App() {
         normalizedPropertyName.includes(estimateProperty);
     });
     const approvedProposals = selectedProperty.salesActivities.filter((activity) => activity.status === 'APPROVED').length;
+    const isClient = selectedProperty.lifecycleStatus === 'CLIENT';
     return (
       <div className="page">
         <div className="property-detail-nav">
@@ -2530,6 +2537,17 @@ function App() {
           </div>
 
           <div className="property-header-actions">
+            <div className="property-lifecycle-summary">
+              <span className={`lifecycle-badge lifecycle-${isClient ? 'client' : 'lead'}`}>
+                {isClient ? 'Client' : 'Lead'}
+              </span>
+              {selectedProperty.serviceStartDate && (
+                <small>
+                  Service since{' '}
+                  {new Date(selectedProperty.serviceStartDate).toLocaleDateString('en-US')}
+                </small>
+              )}
+            </div>
             {!isEditing && (
               <button
                 className="danger-button"
@@ -2563,12 +2581,12 @@ function App() {
             </div>
             <div className="property-processes">
               <div>
-                <div className="process-title"><strong>Proposal journey</strong><span>{approvedProposals ? 'Contract stage' : 'Commercial stage'}</span></div>
+                <div className="process-title"><strong>Proposal journey</strong><span>{isClient ? 'Active client' : approvedProposals ? 'Contract stage' : 'Commercial stage'}</span></div>
                 <div className="process-track">
                   <span className="process-complete">Property created</span>
-                  <span className={selectedProperty.salesActivities.length ? 'process-complete' : ''}>Proposal</span>
-                  <span className={approvedProposals ? 'process-complete' : ''}>Contract</span>
-                  <span>Service start</span>
+                  <span className={isClient || selectedProperty.salesActivities.length ? 'process-complete' : ''}>Proposal</span>
+                  <span className={isClient || approvedProposals ? 'process-complete' : ''}>Contract</span>
+                  <span className={isClient ? 'process-complete' : ''}>Service start</span>
                 </div>
               </div>
             </div>
@@ -3086,6 +3104,20 @@ function App() {
                       selectedProperty
                         .leadSource,
                     )}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Commercial Status</span>
+                  <strong>{selectedProperty.lifecycleStatus === 'CLIENT' ? 'Client' : 'Lead'}</strong>
+                </div>
+
+                <div>
+                  <span>Service Start</span>
+                  <strong>
+                    {selectedProperty.serviceStartDate
+                      ? new Date(selectedProperty.serviceStartDate).toLocaleDateString('en-US')
+                      : '-'}
                   </strong>
                 </div>
 
@@ -4559,6 +4591,10 @@ function App() {
             <span>Total proposals</span>
             <strong>{dashboardStats.totalProposals}</strong>
           </div>
+          <div className="dashboard-kpi">
+            <span>Clients</span>
+            <strong>{dashboardStats.clientCount}</strong>
+          </div>
         </div>
 
         <div className="dashboard-charts">
@@ -4674,6 +4710,9 @@ function App() {
                   Management
                 </th>
                 <th>
+                  Status
+                </th>
+                <th>
                   Proposals
                 </th>
               </tr>
@@ -4732,6 +4771,12 @@ function App() {
                       {property
                         .managementCompany
                         ?.name ?? '-'}
+                    </td>
+
+                    <td>
+                      <span className={`lifecycle-badge lifecycle-${property.lifecycleStatus === 'CLIENT' ? 'client' : 'lead'}`}>
+                        {property.lifecycleStatus === 'CLIENT' ? 'Client' : 'Lead'}
+                      </span>
                     </td>
 
                     <td>
