@@ -3,9 +3,10 @@ import { API_URL } from './api';
 import type { ProposalPdfData } from './proposalPdf';
 import { allocateProposalCosts } from './proposalPricing';
 import { proposalServiceOptions, type ProposalService } from './proposalServices';
+import { ChemicalsPage } from './ChemicalsPage';
 import './App.css';
 
-type AppArea = 'home' | 'commercial' | 'estimates' | 'operations' | 'finance';
+type AppArea = 'home' | 'commercial' | 'chemicals' | 'estimates' | 'operations' | 'finance';
 type PropertyTab = 'overview' | 'commercial' | 'estimates' | 'contracts';
 
 type EstimateOpportunity = {
@@ -221,9 +222,12 @@ function chemicalCostPercentage(body: ProposalWaterBody) {
   return chemicalCostPercentages[body.category] ?? chemicalCostPercentages.SMALL;
 }
 
+function weeklyVisitsForFrequency(frequency: string) {
+  return Math.max(1, Number.parseInt(frequency, 10) || 1);
+}
+
 function monthlyVisitsForFrequency(frequency: string) {
-  const weeklyVisits = Math.max(1, Number.parseInt(frequency, 10) || 1);
-  return weeklyVisits * (13 / 3);
+  return weeklyVisitsForFrequency(frequency) * (13 / 3);
 }
 
 function calculateWaterBodyPrice(body: ProposalWaterBody) {
@@ -772,8 +776,9 @@ function App() {
     const laborBasis = Math.min(monthlyRevenue, 999);
     const laborPerVisit = (laborBasis * 0.2) / 13;
     const laborCost = laborPerVisit * monthlyVisitsForFrequency(body.frequency);
+    const chemicalFrequencyFactor = weeklyVisitsForFrequency(body.frequency) / 3;
     const chemicalCost =
-      monthlyRevenue * (chemicalCostPercentage(body) / 100);
+      monthlyRevenue * (chemicalCostPercentage(body) / 100) * chemicalFrequencyFactor;
     const suppliesCost = monthlyRevenue * 0.02;
     const gasolineCost = (allocation?.fuelCents ?? 0) / 100;
 
@@ -2248,6 +2253,7 @@ function App() {
     const areas: Array<{ id: AppArea; label: string; icon: string }> = [
       { id: 'home', label: 'Home', icon: '⌂' },
       { id: 'commercial', label: 'Commercial CRM', icon: '◎' },
+      { id: 'chemicals', label: 'Químicos', icon: '⚗' },
       { id: 'estimates', label: 'Estimates', icon: '$' },
       { id: 'operations', label: 'Operations', icon: '◇' },
       { id: 'finance', label: 'Finance', icon: '▤' },
@@ -2395,9 +2401,9 @@ function App() {
     );
   }
 
-  function renderAreaLanding(area: Exclude<AppArea, 'commercial' | 'estimates'>) {
+  function renderAreaLanding(area: Exclude<AppArea, 'commercial' | 'chemicals' | 'estimates'>) {
     const content = {
-      home: ['BlueLife Workspace', 'One internal system for commercial, repairs, operations and finance.', ['Commercial CRM', 'Estimates', 'Operations', 'Finance']],
+      home: ['BlueLife Workspace', 'One internal system for commercial, chemicals, repairs, operations and finance.', ['Commercial CRM', 'Químicos', 'Estimates', 'Operations', 'Finance']],
       operations: ['Operations', 'Coordinate approved repairs, technicians, scheduled dates and completion.', ['Repair schedule', 'Technician workload', 'Completed work', 'Service alerts']],
       finance: ['Finance', 'Follow converted estimates through invoicing and payment reconciliation.', ['Ready to invoice', 'Invoices issued', 'Revenue', 'QuickBooks status']],
     }[area];
@@ -2408,7 +2414,7 @@ function App() {
         <header className="area-page-header"><div><span className="area-eyebrow">BLUE LIFE INTERNAL APP</span><h1>{content[0]}</h1><p>{content[1]}</p></div></header>
         <section className="area-landing-grid">
           {(content[2] as string[]).map((item, index) => (
-            <button type="button" key={item} onClick={() => area === 'home' && navigateToArea((['commercial', 'estimates', 'operations', 'finance'] as AppArea[])[index])}>
+            <button type="button" key={item} onClick={() => area === 'home' && navigateToArea((['commercial', 'chemicals', 'estimates', 'operations', 'finance'] as AppArea[])[index])}>
               <span>{String(index + 1).padStart(2, '0')}</span><strong>{item}</strong><small>{area === 'home' ? 'Open area →' : 'Module foundation ready'}</small>
             </button>
           ))}
@@ -2568,6 +2574,9 @@ function App() {
   }
 
   if (activeArea === 'estimates') return renderEstimatesPage();
+  if (activeArea === 'chemicals') {
+    return <ChemicalsPage sidebar={renderAppSidebar()} properties={properties} />;
+  }
   if (activeArea === 'home' || activeArea === 'operations' || activeArea === 'finance') {
     return renderAreaLanding(activeArea);
   }
@@ -2586,7 +2595,8 @@ function App() {
     const approvedProposals = selectedProperty.salesActivities.filter((activity) => activity.status === 'APPROVED').length;
     const isClient = selectedProperty.lifecycleStatus === 'CLIENT';
     return (
-      <div className="page">
+      <div className="page app-page">
+        {renderAppSidebar()}
         <div className="property-detail-nav">
         <button
           className="back-button"
@@ -4382,15 +4392,16 @@ function App() {
   }
 
   return (
-    <div className="page">
+    <div className="page app-page">
+      {renderAppSidebar()}
       <header className="header">
         <div>
           <h1>
-            BlueLife CRM
+            Commercial
           </h1>
 
           <p>
-            Property Management
+            BlueLife CRM · Property Management
           </p>
         </div>
 
