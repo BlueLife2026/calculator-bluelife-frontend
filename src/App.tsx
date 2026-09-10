@@ -761,8 +761,13 @@ function App() {
     adjustmentPercentage,
     monthlyInvestment,
   );
-  const estimatedWaterBodyProfits = includedWaterBodies.map((body, index) => {
-    const allocation = profitAllocations[index];
+  const profitAllocationByWaterBody = new Map(
+    includedWaterBodies.map((body, index) => [body, profitAllocations[index]]),
+  );
+  const estimatedWaterBodyProfits = proposalWaterBodies.map((body) => {
+    if (!body.include) return null;
+
+    const allocation = profitAllocationByWaterBody.get(body);
     const monthlyRevenue = (allocation?.monthlyCents ?? 0) / 100;
     const laborBasis = Math.min(monthlyRevenue, 999);
     const laborPerVisit = (laborBasis * 0.2) / 13;
@@ -772,12 +777,7 @@ function App() {
     const suppliesCost = monthlyRevenue * 0.02;
     const gasolineCost = (allocation?.fuelCents ?? 0) / 100;
 
-    return {
-      name: body.name,
-      type: body.type,
-      category: body.category,
-      profit: monthlyRevenue - laborCost - chemicalCost - suppliesCost - gasolineCost,
-    };
+    return monthlyRevenue - laborCost - chemicalCost - suppliesCost - gasolineCost;
   });
 
   const [
@@ -4044,6 +4044,7 @@ function App() {
                         <th>Disinfection</th>
                         <th>Access</th>
                         <th><strong>Price</strong><br /><span className="table-heading-subtitle">Monthly</span></th>
+                        <th><strong>Profit</strong><br /><span className="table-heading-subtitle">Monthly</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4187,6 +4188,23 @@ function App() {
                               <small className="manual-price-label">Commercial price</small>
                             )}
                           </td>
+                          <td className={`water-body-profit-cell ${(estimatedWaterBodyProfits[index] ?? 0) < 0 ? 'is-negative' : ''}`}>
+                            {body.include && estimatedWaterBodyProfits[index] !== null ? (
+                              <>
+                                <strong>
+                                  {(estimatedWaterBodyProfits[index] ?? 0).toLocaleString('en-US', {
+                                    style: 'currency',
+                                    currency: 'USD',
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0,
+                                  })}
+                                </strong>
+                                <small>estimated net / month</small>
+                              </>
+                            ) : (
+                              <span className="water-body-profit-muted">Not included</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -4260,39 +4278,6 @@ function App() {
               <div className="final-proposal-total">
                 <span>Final Monthly Proposal</span>
                 <strong>${monthlyInvestment.toLocaleString('en-US')} / month</strong>
-              </div>
-
-              <div className="proposal-profit-section">
-                <div className="proposal-profit-heading">
-                  <span>Estimated Profit</span>
-                  <strong>By Water Body</strong>
-                </div>
-                <div className="proposal-profit-grid">
-                  {estimatedWaterBodyProfits.map((item, index) => (
-                    <article key={`${item.name}-${index}`}>
-                      <div>
-                        <strong>{item.name}</strong>
-                        <small>
-                          {formatLabel(item.type)}
-                          {item.type === 'SWIMMING_POOL' && item.category
-                            ? ` · ${formatLabel(item.category)}`
-                            : ''}
-                        </small>
-                      </div>
-                      <div className="proposal-profit-value">
-                        <strong>
-                          {item.profit.toLocaleString('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          })}
-                        </strong>
-                        <small>net profit / month</small>
-                      </div>
-                    </article>
-                  ))}
-                </div>
               </div>
 
               <div className="modal-actions">

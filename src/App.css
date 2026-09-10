@@ -1050,12 +1050,8 @@ tbody tr:hover {
   order: 6;
 }
 
-.proposal-modal > .proposal-profit-section {
-  order: 7;
-}
-
 .proposal-modal > .modal-actions {
-  order: 8;
+  order: 7;
 }
 
 .sales-activity-workspace {
@@ -1678,83 +1674,6 @@ tbody tr:hover {
   font-size: 20px;
 }
 
-.proposal-profit-section {
-  overflow: hidden;
-  border: 1px solid #b7dfc6;
-  border-radius: 12px;
-  background: #f5fcf7;
-}
-
-.proposal-profit-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #d8eee0;
-  color: #475467;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.proposal-profit-heading strong {
-  color: #166534;
-  font-size: 13px;
-}
-
-.proposal-profit-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  padding: 14px;
-}
-
-.proposal-profit-grid article {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-  border: 1px solid #d8eee0;
-  border-radius: 10px;
-  padding: 13px 14px;
-  background: white;
-}
-
-.proposal-profit-grid article > div:first-child {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.proposal-profit-grid article > div:first-child strong {
-  overflow: hidden;
-  color: #344054;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.proposal-profit-grid small {
-  color: #667085;
-  font-size: 10px;
-}
-
-.proposal-profit-value {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.proposal-profit-value strong {
-  color: #15803d;
-  font-size: 19px;
-}
-
 .proposal-water-bodies-card .table-container {
   width: 100%;
   max-width: 100%;
@@ -1892,21 +1811,50 @@ tbody tr:hover {
 }
 
 .proposal-water-bodies-card .calculator-table th:nth-child(1),
-.proposal-water-bodies-card .calculator-table td:nth-child(1) { width: 7%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(1) { width: 5%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(2),
-.proposal-water-bodies-card .calculator-table td:nth-child(2) { width: 15%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(2) { width: 14%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(3),
-.proposal-water-bodies-card .calculator-table td:nth-child(3) { width: 18%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(3) { width: 16%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(4),
-.proposal-water-bodies-card .calculator-table td:nth-child(4) { width: 14%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(4) { width: 11%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(5),
-.proposal-water-bodies-card .calculator-table td:nth-child(5) { width: 12%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(5) { width: 11%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(6),
-.proposal-water-bodies-card .calculator-table td:nth-child(6) { width: 12%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(6) { width: 10%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(7),
-.proposal-water-bodies-card .calculator-table td:nth-child(7) { width: 12%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(7) { width: 10%; }
 .proposal-water-bodies-card .calculator-table th:nth-child(8),
-.proposal-water-bodies-card .calculator-table td:nth-child(8) { width: 10%; }
+.proposal-water-bodies-card .calculator-table td:nth-child(8) { width: 12%; }
+.proposal-water-bodies-card .calculator-table th:nth-child(9),
+.proposal-water-bodies-card .calculator-table td:nth-child(9) { width: 11%; }
+
+.water-body-profit-cell {
+  text-align: right;
+}
+
+.proposal-water-bodies-card .calculator-table .water-body-profit-cell strong {
+  display: block;
+  color: #15803d;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.water-body-profit-cell small {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-size: 10px;
+}
+
+.proposal-water-bodies-card .calculator-table .water-body-profit-cell.is-negative strong {
+  color: #b42318;
+}
+
+.water-body-profit-muted {
+  color: #98a2b3;
+  font-size: 11px;
+}
 
 .proposal-water-bodies-card .calculator-table td:nth-child(5) select {
   width: 110px;
@@ -2154,10 +2102,6 @@ tbody tr:hover {
   }
 
   .transport-inputs {
-    grid-template-columns: 1fr;
-  }
-
-  .proposal-profit-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2652,6 +2596,7 @@ tbody tr:hover {
   .proposal-water-bodies-card .calculator-table td:nth-child(6)::before { content: 'Disinfection'; }
   .proposal-water-bodies-card .calculator-table td:nth-child(7)::before { content: 'Access'; }
   .proposal-water-bodies-card .calculator-table td:nth-child(8)::before { content: 'Water Body Monthly Price'; }
+  .proposal-water-bodies-card .calculator-table td:nth-child(9)::before { content: 'Estimated Monthly Profit'; }
 
   .proposal-water-bodies-card .calculator-table td.water-body-category-cell.is-hidden {
     display: none;
@@ -2716,6 +2661,21 @@ tbody tr:hover {
   .proposal-water-bodies-card .calculator-table td:nth-child(8) .manual-price-label {
     grid-column: 2;
     margin-left: auto;
+  }
+
+  .proposal-water-bodies-card .calculator-table td:nth-child(9) {
+    grid-column: 1 / -1;
+    align-items: flex-end;
+    margin-top: 2px;
+    padding: 10px 12px;
+    border: 1px solid #d8eee0;
+    border-radius: 8px;
+    background: #f5fcf7;
+  }
+
+  .proposal-water-bodies-card .calculator-table td:nth-child(9)::before {
+    align-self: flex-start;
+    color: #166534;
   }
 
   .proposal-water-bodies-card .calculator-table td select,
