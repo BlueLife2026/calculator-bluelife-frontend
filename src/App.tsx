@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { API_URL } from './api';
 import type { ProposalPdfData } from './proposalPdf';
+import { allocateProposalCosts } from './proposalPricing';
 import { proposalServiceOptions, type ProposalService } from './proposalServices';
 import './App.css';
 
@@ -207,6 +208,23 @@ const accessMultipliers: Record<ProposalWaterBody['accessDifficulty'], number> =
   SIMPLE: 1.03,
   COMPLEX: 1.05,
 };
+
+const chemicalCostPercentages: Record<string, number> = {
+  SMALL: 14.5,
+  MEDIUM: 16.3,
+  LARGE: 26.5,
+  EXTRA_LARGE: 26.5,
+};
+
+function chemicalCostPercentage(body: ProposalWaterBody) {
+  if (body.type !== 'SWIMMING_POOL') return chemicalCostPercentages.SMALL;
+  return chemicalCostPercentages[body.category] ?? chemicalCostPercentages.SMALL;
+}
+
+function monthlyVisitsForFrequency(frequency: string) {
+  const weeklyVisits = Math.max(1, Number.parseInt(frequency, 10) || 1);
+  return weeklyVisits * (13 / 3);
+}
 
 function calculateWaterBodyPrice(body: ProposalWaterBody) {
   const basePrice = body.type === 'SWIMMING_POOL'
@@ -731,6 +749,36 @@ function App() {
   const waterBodiesMonthlyInvestment = Math.ceil(
     baseMonthlyPrice * (1 - adjustmentPercentage / 100),
   );
+  const includedWaterBodies = proposalWaterBodies.filter((body) => body.include);
+  const profitAllocations = allocateProposalCosts(
+    includedWaterBodies.map((body) => ({
+      description: body.name,
+      type: body.type,
+      frequency: body.frequency,
+      baseMonthlyCost: effectiveWaterBodyPrice(body),
+    })),
+    monthlyTransportationCost,
+    adjustmentPercentage,
+    monthlyInvestment,
+  );
+  const estimatedWaterBodyProfits = includedWaterBodies.map((body, index) => {
+    const allocation = profitAllocations[index];
+    const monthlyRevenue = (allocation?.monthlyCents ?? 0) / 100;
+    const laborBasis = Math.min(monthlyRevenue, 999);
+    const laborPerVisit = (laborBasis * 0.2) / 13;
+    const laborCost = laborPerVisit * monthlyVisitsForFrequency(body.frequency);
+    const chemicalCost =
+      monthlyRevenue * (chemicalCostPercentage(body) / 100);
+    const suppliesCost = monthlyRevenue * 0.02;
+    const gasolineCost = (allocation?.fuelCents ?? 0) / 100;
+
+    return {
+      name: body.name,
+      type: body.type,
+      category: body.category,
+      profit: monthlyRevenue - laborCost - chemicalCost - suppliesCost - gasolineCost,
+    };
+  });
 
   const [
     editForm,
@@ -4212,6 +4260,39 @@ function App() {
               <div className="final-proposal-total">
                 <span>Final Monthly Proposal</span>
                 <strong>${monthlyInvestment.toLocaleString('en-US')} / month</strong>
+              </div>
+
+              <div className="proposal-profit-section">
+                <div className="proposal-profit-heading">
+                  <span>Estimated Profit</span>
+                  <strong>By Water Body</strong>
+                </div>
+                <div className="proposal-profit-grid">
+                  {estimatedWaterBodyProfits.map((item, index) => (
+                    <article key={`${item.name}-${index}`}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <small>
+                          {formatLabel(item.type)}
+                          {item.type === 'SWIMMING_POOL' && item.category
+                            ? ` · ${formatLabel(item.category)}`
+                            : ''}
+                        </small>
+                      </div>
+                      <div className="proposal-profit-value">
+                        <strong>
+                          {item.profit.toLocaleString('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })}
+                        </strong>
+                        <small>net profit / month</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </div>
 
               <div className="modal-actions">
