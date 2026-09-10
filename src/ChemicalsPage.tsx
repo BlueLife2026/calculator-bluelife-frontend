@@ -1,20 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
 import { API_URL } from './api';
-
-type ChemicalWaterBody = {
-  id: string;
-  name: string;
-  type: string;
-  active: boolean;
-};
-
-type ChemicalProperty = {
-  id: string;
-  name: string;
-  lifecycleStatus: string;
-  waterBodies: ChemicalWaterBody[];
-};
 
 type QuantityKey =
   | 'tabsQuantity'
@@ -30,9 +16,6 @@ type QuantityKey =
 type ChemicalReportForm = Record<QuantityKey, string> & {
   serviceDate: string;
   technicianName: string;
-  propertyId: string;
-  waterBodyId: string;
-  notes: string;
 };
 
 type ChemicalReport = Record<QuantityKey, number | string> & {
@@ -40,7 +23,7 @@ type ChemicalReport = Record<QuantityKey, number | string> & {
   serviceDate: string;
   technicianName: string;
   propertyId: string | null;
-  propertyName: string;
+  propertyName: string | null;
   waterBodyId: string | null;
   waterBodyName: string | null;
   notes: string | null;
@@ -89,12 +72,10 @@ function localDate() {
   return local.toISOString().slice(0, 10);
 }
 
-function emptyForm(): ChemicalReportForm {
+function emptyForm(technicianName = ''): ChemicalReportForm {
   return {
     serviceDate: localDate(),
-    technicianName: '',
-    propertyId: '',
-    waterBodyId: '',
+    technicianName,
     tabsQuantity: '',
     liquidChlorineGallons: '',
     muriaticAcidGallons: '',
@@ -104,8 +85,29 @@ function emptyForm(): ChemicalReportForm {
     stabilizerScoops: '',
     saltBags: '',
     phosphatesOunces: '',
-    notes: '',
   };
+}
+
+function technicianFromSharedLink() {
+  const requestedTechnician = new URLSearchParams(window.location.search)
+    .get('technician')
+    ?.trim();
+  if (!requestedTechnician) return '';
+
+  return technicians.find(
+    (technician) => technician.localeCompare(requestedTechnician, undefined, {
+      sensitivity: 'base',
+    }) === 0,
+  ) ?? '';
+}
+
+function sharedTechnicianUrl(technicianName: string) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('area', 'chemicals');
+  url.searchParams.set('technician', technicianName);
+  return url.toString();
 }
 
 function formatReportDate(value: string) {
@@ -120,31 +122,20 @@ function quantityLabel(value: number | string) {
 
 export function ChemicalsPage({
   sidebar,
-  properties,
 }: {
   sidebar: ReactNode;
-  properties: ChemicalProperty[];
 }) {
-  const [form, setForm] = useState<ChemicalReportForm>(() => emptyForm());
+  const [lockedTechnician] = useState(technicianFromSharedLink);
+  const [form, setForm] = useState<ChemicalReportForm>(() =>
+    emptyForm(lockedTechnician),
+  );
   const [reports, setReports] = useState<ChemicalReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
-
-  const activeProperties = useMemo(
-    () =>
-      properties
-        .filter((property) => property.lifecycleStatus === 'CLIENT')
-        .slice()
-        .sort((first, second) => first.name.localeCompare(second.name)),
-    [properties],
-  );
-  const selectedProperty = activeProperties.find(
-    (property) => property.id === form.propertyId,
-  );
-  const availableWaterBodies =
-    selectedProperty?.waterBodies.filter((body) => body.active) ?? [];
+  const [shareTechnician, setShareTechnician] = useState('');
+  const isSharedForm = Boolean(lockedTechnician);
 
   useEffect(() => {
     async function loadReports() {
@@ -169,21 +160,13 @@ export function ChemicalsPage({
   const pendingReports = reports.filter(
     (report) => report.validationStatus === 'PENDING',
   ).length;
-  const propertiesReported = new Set(reports.map((report) => report.propertyName)).size;
+  const techniciansReported = new Set(
+    reports.map((report) => report.technicianName),
+  ).size;
 
   function updateQuantity(key: QuantityKey, value: string) {
     if (value !== '' && Number(value) < 0) return;
     setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function selectProperty(propertyId: string) {
-    const property = activeProperties.find((item) => item.id === propertyId);
-    const waterBodies = property?.waterBodies.filter((body) => body.active) ?? [];
-    setForm((current) => ({
-      ...current,
-      propertyId,
-      waterBodyId: waterBodies.length === 1 ? waterBodies[0].id : '',
-    }));
   }
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
@@ -208,10 +191,7 @@ export function ChemicalsPage({
         body: JSON.stringify({
           serviceDate: form.serviceDate,
           technicianName: form.technicianName.trim(),
-          propertyId: form.propertyId,
-          waterBodyId: form.waterBodyId || undefined,
           ...quantities,
-          notes: form.notes.trim() || undefined,
         }),
       });
       const result = await response.json().catch(() => null);
@@ -225,9 +205,8 @@ export function ChemicalsPage({
 
       setReports((current) => [result as ChemicalReport, ...current]);
       setForm((current) => ({
-        ...emptyForm(),
+        ...emptyForm(lockedTechnician || current.technicianName),
         serviceDate: current.serviceDate,
-        technicianName: current.technicianName,
       }));
       setSavedMessage('Registro guardado correctamente en el sistema.');
     } catch (submitError) {
@@ -242,69 +221,116 @@ export function ChemicalsPage({
     }
   }
 
+  function shareOnWhatsApp() {
+    if (!shareTechnician) return;
+    const firstName = shareTechnician.split(' ')[0];
+    const message = `Hola ${firstName}, registra aquí las cantidades de químicos que retiraste de bodega: ${sharedTechnicianUrl(shareTechnician)}`;
+    const whatsappWindow = window.open(
+      `https://wa.me/?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+    if (whatsappWindow) whatsappWindow.opener = null;
+  }
+
   return (
-    <div className="page app-page chemicals-page">
-      {sidebar}
+    <div className={`page chemicals-page ${isSharedForm ? 'chemicals-shared-page' : 'app-page'}`}>
+      {!isSharedForm && sidebar}
 
       <header className="area-page-header chemicals-page-header">
         <div>
           <span className="area-eyebrow">CONTROL OPERATIVO</span>
           <h1>Químicos</h1>
           <p>
-            Registra el consumo informado por cada técnico para compararlo con
-            bodega y Skimmer.
+            Registra las cantidades que cada técnico retira de bodega para
+            compararlas después con el inventario y Skimmer.
           </p>
         </div>
-        <div className="area-header-actions">
-          <span className="integration-pill"><i /> Registro en base de datos activo</span>
-          <a
-            className="secondary-button chemicals-export-button"
-            href={`${API_URL}/chemicals/reports/export`}
-          >
-            Exportar para Excel
-          </a>
-        </div>
+        {!isSharedForm && (
+          <div className="area-header-actions">
+            <span className="integration-pill"><i /> Registro en base de datos activo</span>
+            <a
+              className="secondary-button chemicals-export-button"
+              href={`${API_URL}/chemicals/reports/export`}
+            >
+              Exportar para Excel
+            </a>
+          </div>
+        )}
       </header>
 
-      <nav className="chemicals-tabs" aria-label="Módulos de químicos">
-        <button className="chemicals-tab-active" type="button">Registro</button>
-        <button type="button" disabled>Validación</button>
-        <button type="button" disabled>Bodega</button>
-        <button type="button" disabled>Skimmer</button>
-      </nav>
+      {!isSharedForm && (
+        <>
+          <nav className="chemicals-tabs" aria-label="Módulos de químicos">
+            <button className="chemicals-tab-active" type="button">Registro</button>
+            <button type="button" disabled>Validación</button>
+            <button type="button" disabled>Bodega</button>
+            <button type="button" disabled>Skimmer</button>
+          </nav>
 
-      <section className="chemicals-validation-flow" aria-label="Flujo de validación">
-        <article className="chemicals-source-active">
-          <span>01</span>
-          <div><strong>Reporte del técnico</strong><small>Formulario activo</small></div>
-        </article>
-        <article>
-          <span>02</span>
-          <div><strong>Salida de bodega</strong><small>Próxima conexión</small></div>
-        </article>
-        <article>
-          <span>03</span>
-          <div><strong>Registro en Skimmer</strong><small>Próxima conexión</small></div>
-        </article>
-      </section>
+          <section className="chemicals-validation-flow" aria-label="Flujo de validación">
+            <article className="chemicals-source-active">
+              <span>01</span>
+              <div><strong>Retiro reportado</strong><small>Formulario del técnico</small></div>
+            </article>
+            <article>
+              <span>02</span>
+              <div><strong>Salida de bodega</strong><small>Próxima conexión</small></div>
+            </article>
+            <article>
+              <span>03</span>
+              <div><strong>Uso en Skimmer</strong><small>Próxima conexión</small></div>
+            </article>
+          </section>
 
-      <section className="chemicals-kpis">
-        <article><span>Registros de hoy</span><strong>{reportsToday}</strong><small>Capturados en el formulario</small></article>
-        <article><span>Pendientes de validar</span><strong>{pendingReports}</strong><small>Esperando cruce con las otras fuentes</small></article>
-        <article><span>Propiedades registradas</span><strong>{propertiesReported}</strong><small>En el historial disponible</small></article>
-      </section>
+          <section className="chemicals-kpis">
+            <article><span>Registros de hoy</span><strong>{reportsToday}</strong><small>Retiros informados por el equipo</small></article>
+            <article><span>Pendientes de validar</span><strong>{pendingReports}</strong><small>Esperando cruce con las otras fuentes</small></article>
+            <article><span>Técnicos con registros</span><strong>{techniciansReported}</strong><small>En el historial disponible</small></article>
+          </section>
 
-      <div className="chemicals-workspace">
+          <section className="chemicals-share-panel">
+            <div>
+              <span>ENLACE PARA WHATSAPP</span>
+              <h2>Formulario personalizado por técnico</h2>
+              <p>Selecciona el técnico. El enlace abrirá su formulario con el nombre bloqueado.</p>
+            </div>
+            <div className="chemicals-share-controls">
+              <label htmlFor="chemical-share-technician">Técnico</label>
+              <select
+                id="chemical-share-technician"
+                value={shareTechnician}
+                onChange={(event) => setShareTechnician(event.target.value)}
+              >
+                <option value="">Seleccionar técnico</option>
+                {technicians.map((technician) => (
+                  <option value={technician} key={technician}>{technician}</option>
+                ))}
+              </select>
+              <button
+                className="chemicals-whatsapp-button"
+                type="button"
+                disabled={!shareTechnician}
+                onClick={shareOnWhatsApp}
+              >
+                Compartir por WhatsApp
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
+      <div className={`chemicals-workspace ${isSharedForm ? 'chemicals-shared-workspace' : ''}`}>
         <section className="chemicals-form-card">
           <div className="chemicals-card-heading">
-            <div><span>NUEVO REGISTRO</span><h2>Reporte de químicos</h2></div>
+            <div><span>NUEVO REGISTRO</span><h2>Retiro de químicos de bodega</h2></div>
             <small>Todos los campos con * son obligatorios.</small>
           </div>
 
           <form onSubmit={submitReport}>
             <div className="chemicals-context-grid">
               <div className="form-field">
-                <label htmlFor="chemical-date">Fecha del servicio *</label>
+                <label htmlFor="chemical-date">Fecha del reporte *</label>
                 <input
                   id="chemical-date"
                   type="date"
@@ -317,58 +343,36 @@ export function ChemicalsPage({
               </div>
               <div className="form-field">
                 <label htmlFor="chemical-technician">Técnico *</label>
-                <input
-                  id="chemical-technician"
-                  list="chemical-technicians"
-                  required
-                  placeholder="Selecciona o escribe un técnico"
-                  value={form.technicianName}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, technicianName: event.target.value }))
-                  }
-                />
-                <datalist id="chemical-technicians">
-                  {technicians.map((technician) => (
-                    <option value={technician} key={technician} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="form-field">
-                <label htmlFor="chemical-property">Propiedad *</label>
-                <select
-                  id="chemical-property"
-                  required
-                  value={form.propertyId}
-                  onChange={(event) => selectProperty(event.target.value)}
-                >
-                  <option value="">Seleccionar propiedad</option>
-                  {activeProperties.map((property) => (
-                    <option value={property.id} key={property.id}>{property.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-field">
-                <label htmlFor="chemical-water-body">Cuerpo de agua</label>
-                <select
-                  id="chemical-water-body"
-                  value={form.waterBodyId}
-                  disabled={!selectedProperty}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, waterBodyId: event.target.value }))
-                  }
-                >
-                  <option value="">General / no especificado</option>
-                  {availableWaterBodies.map((body) => (
-                    <option value={body.id} key={body.id}>
-                      {body.name} · {body.type.replaceAll('_', ' ')}
-                    </option>
-                  ))}
-                </select>
+                {lockedTechnician ? (
+                  <>
+                    <input
+                      className="chemicals-locked-technician"
+                      id="chemical-technician"
+                      readOnly
+                      value={form.technicianName}
+                    />
+                    <small className="chemicals-locked-note">Asignado por el enlace · no se puede cambiar</small>
+                  </>
+                ) : (
+                  <select
+                    id="chemical-technician"
+                    required
+                    value={form.technicianName}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, technicianName: event.target.value }))
+                    }
+                  >
+                    <option value="">Seleccionar técnico</option>
+                    {technicians.map((technician) => (
+                      <option value={technician} key={technician}>{technician}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
             <div className="chemicals-quantity-heading">
-              <div><h3>Cantidades reportadas</h3><p>Deja en blanco los químicos que no se utilizaron.</p></div>
+              <div><h3>Cantidades retiradas</h3><p>Deja en blanco los químicos que no retiraste.</p></div>
               <span>Fuente: técnico</span>
             </div>
             <div className="chemicals-quantity-grid">
@@ -393,20 +397,6 @@ export function ChemicalsPage({
               ))}
             </div>
 
-            <div className="form-field chemicals-notes-field">
-              <label htmlFor="chemical-notes">Notas</label>
-              <textarea
-                id="chemical-notes"
-                rows={3}
-                maxLength={2000}
-                placeholder="Ejemplo: entrega adicional, tratamiento especial o corrección del reporte."
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, notes: event.target.value }))
-                }
-              />
-            </div>
-
             {error && <p className="chemicals-form-message chemicals-form-error">{error}</p>}
             {savedMessage && <p className="chemicals-form-message chemicals-form-success">{savedMessage}</p>}
 
@@ -415,7 +405,7 @@ export function ChemicalsPage({
                 className="secondary-button"
                 type="button"
                 onClick={() => {
-                  setForm(emptyForm());
+                  setForm(emptyForm(lockedTechnician));
                   setError('');
                   setSavedMessage('');
                 }}
@@ -426,7 +416,7 @@ export function ChemicalsPage({
               <button
                 className="primary-button"
                 type="submit"
-                disabled={saving || !form.serviceDate || !form.technicianName.trim() || !form.propertyId}
+                disabled={saving || !form.serviceDate || !form.technicianName.trim()}
               >
                 {saving ? 'Guardando...' : 'Guardar registro'}
               </button>
@@ -434,7 +424,7 @@ export function ChemicalsPage({
           </form>
         </section>
 
-        <section className="chemicals-history-card">
+        {!isSharedForm && <section className="chemicals-history-card">
           <div className="chemicals-card-heading">
             <div><span>HISTORIAL</span><h2>Registros recientes</h2></div>
             <small>{reports.length} registros</small>
@@ -457,14 +447,14 @@ export function ChemicalsPage({
                   <article key={report.id}>
                     <div className="chemical-report-topline">
                       <div>
-                        <strong>{report.propertyName}</strong>
-                        <small>{report.waterBodyName || 'Cuerpo de agua no especificado'}</small>
+                        <strong>{report.technicianName}</strong>
+                        <small>{report.propertyName || 'Retiro de bodega'}</small>
                       </div>
                       <span>Pendiente de validar</span>
                     </div>
                     <dl>
                       <div><dt>Fecha</dt><dd>{formatReportDate(report.serviceDate)}</dd></div>
-                      <div><dt>Técnico</dt><dd>{report.technicianName}</dd></div>
+                      <div><dt>Origen</dt><dd>{report.propertyName ? 'Registro anterior' : 'Bodega'}</dd></div>
                     </dl>
                     <div className="chemical-report-quantities">
                       {usedChemicals.map((chemical) => (
@@ -480,7 +470,7 @@ export function ChemicalsPage({
               })}
             </div>
           )}
-        </section>
+        </section>}
       </div>
     </div>
   );
