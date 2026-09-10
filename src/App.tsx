@@ -678,7 +678,7 @@ function App() {
   const [savingProposal, setSavingProposal] = useState(false);
   const [proposalFileAction, setProposalFileAction] = useState<{
     activityId: string;
-    action: 'CREATE' | 'SEND';
+    action: 'CREATE' | 'EMAIL';
   } | null>(null);
   const [previewActivityId, setPreviewActivityId] = useState<string | null>(null);
   const [proposalDraftNotes, setProposalDraftNotes] = useState('');
@@ -1715,56 +1715,6 @@ function App() {
     } finally {
       setProposalFileAction(null);
     }
-  }
-
-  async function sendProposalEmail(
-    propertyId: string,
-    activity: SalesActivity,
-    recipientEmail: string,
-    subject: string,
-    body: string,
-  ) {
-    const proposalData = proposalPdfDataFromActivity(activity);
-    if (!proposalData) {
-      throw new Error('This proposal does not have enough saved data to create its PDF.');
-    }
-
-    const pdfModule = await import('./proposalPdf');
-    const pdf = await pdfModule.createProposalPdf(proposalData);
-    const formData = new FormData();
-    formData.append('recipientEmail', recipientEmail);
-    formData.append('subject', subject);
-    formData.append('body', body);
-    formData.append('file', pdf.blob, pdf.fileName);
-
-    const response = await fetch(
-      `${API_URL}/properties/${propertyId}/sales-activities/${activity.id}/send-email`,
-      {
-        method: 'POST',
-        body: formData,
-      },
-    );
-    if (!response.ok) {
-      const result = await response.json().catch(() => null) as { message?: string } | null;
-      throw new Error(result?.message ?? 'The proposal email could not be sent.');
-    }
-
-    const updated: SalesActivity = await response.json();
-    const replaceActivity = (property: Property) => ({
-      ...property,
-      salesActivities: property.salesActivities.map((item) =>
-        item.id === updated.id ? updated : item,
-      ),
-    });
-    setProperties((current) =>
-      current.map((property) =>
-        property.id === propertyId ? replaceActivity(property) : property,
-      ),
-    );
-    setSelectedProperty((current) =>
-      current?.id === propertyId ? replaceActivity(current) : current,
-    );
-    return updated;
   }
 
   async function saveProposal() {
@@ -3602,20 +3552,36 @@ function App() {
                                 ? proposalDraftNotes
                                 : activity.notes ?? '';
                               if (!email || !notes) return;
-                              if (!window.confirm(`Send this proposal email to ${email}?`)) {
+                              if (activity.emailDraftWebUrl && activity.status === 'CREATED') {
+                                window.open(
+                                  activity.emailDraftWebUrl,
+                                  '_blank',
+                                  'noopener,noreferrer',
+                                );
                                 return;
+                              }
+
+                              const emailWindow = window.open('about:blank', '_blank');
+                              if (emailWindow) {
+                                emailWindow.opener = null;
+                                emailWindow.document.title = 'Preparing proposal email';
+                                emailWindow.document.body.textContent =
+                                  'Preparing your Outlook email with the PDF attached...';
                               }
 
                               try {
                                 setProposalFileAction({
                                   activityId: activity.id,
-                                  action: 'SEND',
+                                  action: 'EMAIL',
                                 });
                                 const saved = notes === (activity.notes ?? '')
                                   ? activity
                                   : await saveProposalText(activity.id, notes);
-                                if (!saved) return;
-                                await sendProposalEmail(
+                                if (!saved) {
+                                  emailWindow?.close();
+                                  return;
+                                }
+                                const updated = await createProposalEmailDraft(
                                   selectedProperty.id,
                                   saved,
                                   email,
@@ -3626,28 +3592,34 @@ function App() {
                                   await recordProposalFollowUpForProperty(
                                     selectedProperty.id,
                                     activity.id,
-                                    'Proposal email sent again with the PDF attached.',
+                                    'Proposal follow-up email draft created with the PDF attached.',
                                     'EMAIL',
                                   );
                                 }
-                                window.alert(`Proposal email sent to ${email}.`);
+                                if (updated.emailDraftWebUrl) {
+                                  if (emailWindow) {
+                                    emailWindow.location.href = updated.emailDraftWebUrl;
+                                  } else {
+                                    window.location.href = updated.emailDraftWebUrl;
+                                  }
+                                } else {
+                                  emailWindow?.close();
+                                  window.alert('The Outlook email draft could not be opened.');
+                                }
                               } catch (error) {
+                                emailWindow?.close();
                                 console.error(error);
                                 window.alert(
                                   error instanceof Error
                                     ? error.message
-                                    : 'The proposal email could not be sent.',
+                                    : 'The Outlook email draft could not be created.',
                                 );
                               } finally {
                                 setProposalFileAction(null);
                               }
                             }}
                           >
-                            {activeFileAction === 'SEND'
-                              ? 'Sending Email...'
-                              : activity.sentAt
-                                ? 'Send Email Again'
-                                : 'Send Email'}
+                            {activeFileAction === 'EMAIL' ? 'Preparing Email...' : 'Send Email'}
                           </button>
                           <label className="status-control">
                             <select
