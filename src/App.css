@@ -648,6 +648,7 @@ tbody tr:hover {
 }
 
 .dashboard-section {
+  container: property-insights / inline-size;
   margin: 24px 0;
   padding: 24px;
   border: 1px solid #e5e7eb;
@@ -2094,7 +2095,11 @@ tbody tr:hover {
 
   .dashboard-kpis,
   .dashboard-charts {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .proposal-status-chart {
+    grid-column: 1 / -1;
   }
 
   .detail-card-wide {
@@ -3716,5 +3721,66 @@ tbody tr:hover,
     padding: 9px 11px;
     font-size: 12px;
     white-space: nowrap;
+  }
+}
+
+/* Property Insights follows its available content width, including beside the desktop sidebar. */
+@media (max-width: 520px) {
+  .dashboard-section {
+    padding: 16px;
+  }
+
+  .dashboard-kpis,
+  .dashboard-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-status-chart {
+    grid-column: auto;
+  }
+}
+
+@container property-insights (max-width: 900px) {
+  .dashboard-kpis,
+  .dashboard-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .proposal-status-chart {
+    grid-column: 1 / -1;
+  }
+}
+
+@container property-insights (max-width: 620px) {
+  .dashboard-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-status-chart {
+    grid-column: auto;
+  }
+}
+
+@container property-insights (max-width: 420px) {
+  .dashboard-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-kpi,
+  .dashboard-chart-card {
+    padding: 14px;
+  }
+
+  .donut-chart-wrap {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .donut-chart {
+    align-self: center;
+  }
+
+  .bar-row {
+    grid-template-columns: minmax(72px, 1fr) 1.25fr 24px;
   }
 }
