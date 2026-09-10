@@ -664,21 +664,7 @@ export async function createProposalPdf(data: ProposalPdfData) {
 
   return {
     blob: doc.output('blob'),
-    fileName: `${data.proposalNumber}-${safeFilePart(data.propertyName)}.pdf`,
+    fileName: `${safeFilePart(data.propertyName)}-${data.proposalNumber}.pdf`,
     allocations,
   };
-}
-
-export async function downloadProposalPdf(data: ProposalPdfData) {
-  const { blob, fileName, allocations } = await createProposalPdf(data);
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = objectUrl;
-  link.download = fileName;
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
-  return { fileName, allocations };
 }

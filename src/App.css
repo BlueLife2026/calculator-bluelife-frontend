@@ -482,7 +482,10 @@ tbody tr:hover {
 
 .water-body-editor {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1.3fr) minmax(130px, 0.8fr) auto;
+  grid-template-areas:
+    'type name size gallons remove'
+    'photos photos photos photos photos';
+  grid-template-columns: minmax(140px, 0.7fr) minmax(200px, 1.2fr) minmax(120px, 0.7fr) minmax(130px, 0.7fr) auto;
   align-items: end;
   gap: 14px;
   padding: 16px;
@@ -491,13 +494,25 @@ tbody tr:hover {
   background: #f9fafb;
 }
 
+.water-body-editor-spa {
+  grid-template-areas:
+    'type name name gallons remove'
+    'photos photos photos photos photos';
+}
+
+.water-body-type-field { grid-area: type; }
+.water-body-name-field { grid-area: name; }
+.water-body-size-field { grid-area: size; }
+.water-body-gallons-field { grid-area: gallons; }
+
 .water-body-remove {
+  grid-area: remove;
   min-height: 43px;
   padding: 0 8px;
 }
 
 .water-body-photo-field {
-  grid-column: 1 / -1;
+  grid-area: photos;
   padding-top: 2px;
 }
 
@@ -2484,6 +2499,10 @@ tbody tr:hover {
   .proposal-water-bodies-card .calculator-table td:nth-child(7)::before { content: 'Access'; }
   .proposal-water-bodies-card .calculator-table td:nth-child(8)::before { content: 'Water Body Monthly Price'; }
 
+  .proposal-water-bodies-card .calculator-table td.water-body-category-cell.is-hidden {
+    display: none;
+  }
+
   .proposal-water-bodies-card .calculator-table td:nth-child(1) {
     position: absolute;
     top: 15px;
@@ -2869,8 +2888,24 @@ button:disabled {
   }
 
   .water-body-editor {
+    grid-template-areas:
+      'type'
+      'name'
+      'size'
+      'gallons'
+      'remove'
+      'photos';
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .water-body-editor-spa {
+    grid-template-areas:
+      'type'
+      'name'
+      'gallons'
+      'remove'
+      'photos';
   }
 }
 

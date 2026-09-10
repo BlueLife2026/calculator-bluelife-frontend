@@ -87,6 +87,7 @@ type WaterBody = {
   name: string;
   type: string;
   size: string | null;
+  gallons: number | null;
   active: boolean;
 };
 
@@ -99,6 +100,10 @@ type ProposalFollowUp = {
   channel: string;
 };
 
+type StoredProposalData = Partial<Omit<ProposalPdfData, 'proposalDate'>> & {
+  proposalDate?: string;
+};
+
 type SalesActivity = {
   id: string;
   type: string;
@@ -108,9 +113,46 @@ type SalesActivity = {
   sentAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
-  proposalData?: { services?: string[] } | null;
+  proposalData?: StoredProposalData | null;
+  emailDraftId?: string | null;
+  emailDraftWebUrl?: string | null;
+  emailDraftCreatedAt?: string | null;
+  emailDraftFileName?: string | null;
   followUps?: ProposalFollowUp[];
 };
+
+function proposalPdfDataFromActivity(activity: SalesActivity): ProposalPdfData | null {
+  const data = activity.proposalData;
+  if (
+    !data ||
+    typeof data.proposalNumber !== 'string' ||
+    typeof data.propertyName !== 'string' ||
+    typeof data.proposalDate !== 'string' ||
+    !Array.isArray(data.waterBodies) ||
+    !Array.isArray(data.services)
+  ) {
+    return null;
+  }
+
+  const proposalDate = new Date(data.proposalDate);
+  if (Number.isNaN(proposalDate.getTime())) return null;
+
+  return {
+    proposalNumber: data.proposalNumber,
+    proposalDate,
+    clientName: data.clientName ?? '-',
+    propertyName: data.propertyName,
+    address: data.address ?? '-',
+    contactName: data.contactName ?? '-',
+    email: data.email ?? '-',
+    phone: data.phone ?? '-',
+    waterBodies: data.waterBodies,
+    services: data.services,
+    monthlyTransportationCost: data.monthlyTransportationCost ?? 0,
+    discountPercentage: data.discountPercentage ?? 0,
+    totalMonthlyInvestment: data.totalMonthlyInvestment ?? 0,
+  };
+}
 
 const proposalBoardStatuses: SalesActivityStatus[] = [
   'CREATED',
@@ -141,11 +183,13 @@ const poolPrices: Record<string, number[]> = {
 };
 
 const automaticWaterBodyPrices: Record<string, number> = {
-  SPA: 200,
+  SPA: 250,
   KIDDIE_POOL: 400,
   SPLASH_PAD: 400,
   DECORATIVE_WATER_FEATURE: 150,
 };
+
+const vipDiscountPercentage = 20;
 
 const frequencyMultipliers: Record<string, number> = {
   '1x Weekly': 0.55,
@@ -254,6 +298,7 @@ type WaterBodyForm = {
   name: string;
   type: string;
   size: string;
+  gallons: string;
   photoFiles?: File[];
 };
 
@@ -261,8 +306,22 @@ const emptyWaterBodyForm: WaterBodyForm = {
   name: '',
   type: 'SWIMMING_POOL',
   size: 'MEDIUM',
+  gallons: '',
   photoFiles: [],
 };
+
+function isWaterBodyFormValid(waterBody: WaterBodyForm) {
+  const gallons = waterBody.gallons.trim();
+  const gallonsAreValid =
+    gallons === '' || (/^\d+$/.test(gallons) && Number(gallons) > 0);
+
+  return Boolean(
+    waterBody.type &&
+    (waterBody.type === 'SPA' || waterBody.size) &&
+    waterBody.name.trim() &&
+    gallonsAreValid,
+  );
+}
 
 const emptyPropertyForm: PropertyForm = {
   name: '',
@@ -401,8 +460,11 @@ function WaterBodiesEditor({
             </div>
 
             {bodies.map((body, index) => (
-              <div className="water-body-editor" key={`${idPrefix}-${index}`}>
-                <div className="form-field">
+              <div
+                className={`water-body-editor${body.type === 'SPA' ? ' water-body-editor-spa' : ''}`}
+                key={`${idPrefix}-${index}`}
+              >
+                <div className="form-field water-body-type-field">
                   <label htmlFor={`${idPrefix}-type-${index}`}>Type *</label>
                   <select
                     id={`${idPrefix}-type-${index}`}
@@ -436,23 +498,49 @@ function WaterBodiesEditor({
                   />
                 </div>
 
-                <div className="form-field">
-                  <label htmlFor={`${idPrefix}-size-${index}`}>
-                    Size *
+                {body.type !== 'SPA' && (
+                  <div className="form-field water-body-size-field">
+                    <label htmlFor={`${idPrefix}-size-${index}`}>
+                      Size *
+                    </label>
+                    <select
+                      id={`${idPrefix}-size-${index}`}
+                      value={body.size}
+                      onChange={(event) =>
+                        onUpdate(index, 'size', event.target.value)
+                      }
+                    >
+                      <option value="">Select size</option>
+                      <option value="SMALL">Small</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="LARGE">Large</option>
+                      <option value="EXTRA_LARGE">Extra Large</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-field water-body-gallons-field">
+                  <label htmlFor={`${idPrefix}-gallons-${index}`}>
+                    Gallons (optional)
                   </label>
-                  <select
-                    id={`${idPrefix}-size-${index}`}
-                    value={body.size}
+                  <input
+                    id={`${idPrefix}-gallons-${index}`}
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Example: 15000"
+                    value={body.gallons}
                     onChange={(event) =>
-                      onUpdate(index, 'size', event.target.value)
+                      onUpdate(index, 'gallons', event.target.value)
                     }
-                  >
-                    <option value="">Select size</option>
-                    <option value="SMALL">Small</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LARGE">Large</option>
-                    <option value="EXTRA_LARGE">Extra Large</option>
-                  </select>
+                  />
+                  {body.gallons &&
+                    (!/^\d+$/.test(body.gallons) || Number(body.gallons) <= 0) && (
+                      <span className="field-error">
+                        Enter a whole number greater than zero.
+                      </span>
+                    )}
                 </div>
 
                 <button
@@ -616,14 +704,14 @@ function App() {
   const calculatedTransportationCost =
     routeDistanceMiles !== null && mpg > 0
       ? Math.ceil(
-          (routeDistanceMiles * 2 * serviceVisitsPerWeek * 52 / 12 / mpg) * fuelPrice,
+          (routeDistanceMiles * serviceVisitsPerWeek * 52 / 12 / mpg) * fuelPrice,
         )
       : 0;
   const monthlyTransportationCost = calculatedTransportationCost;
   const baseMonthlyPriceWithTransportation = baseMonthlyPrice + monthlyTransportationCost;
   const adjustmentPercentage =
     managementStatus === 'VIP'
-      ? 25
+      ? vipDiscountPercentage
       : managementStatus === 'NEGOTIATED'
         ? Math.min(100, Math.max(0, Number(adjustments || 0)))
       : 0;
@@ -683,19 +771,11 @@ function App() {
     useState<WaterBodyForm[]>([]);
 
   const createWaterBodiesAreValid = createWaterBodies.every(
-    (waterBody) => Boolean(
-      waterBody.type &&
-      waterBody.size &&
-      waterBody.name.trim(),
-    ),
+    isWaterBodyFormValid,
   );
 
   const editWaterBodiesAreValid = editWaterBodies.every(
-    (waterBody) => Boolean(
-      waterBody.type &&
-      waterBody.size &&
-      waterBody.name.trim(),
-    ),
+    isWaterBodyFormValid,
   );
 
   const normalizedContactEmails = createContacts.map((contact) =>
@@ -979,7 +1059,8 @@ function App() {
         id: waterBody.id,
         name: waterBody.name,
         type: waterBody.type,
-        size: waterBody.size ?? 'MEDIUM',
+        size: waterBody.type === 'SPA' ? '' : waterBody.size ?? 'MEDIUM',
+        gallons: waterBody.gallons?.toString() ?? '',
         photoFiles: [],
       })),
     );
@@ -1051,7 +1132,15 @@ function App() {
     setter((current) =>
       current.map((waterBody, waterBodyIndex) =>
         waterBodyIndex === index
-          ? { ...waterBody, [field]: value }
+          ? {
+              ...waterBody,
+              [field]: value,
+              ...(field === 'type'
+                ? {
+                    size: value === 'SPA' ? '' : waterBody.size || 'MEDIUM',
+                  }
+                : {}),
+            }
           : waterBody,
       ),
     );
@@ -1199,6 +1288,7 @@ function App() {
               name: waterBody.name.trim(),
               type: waterBody.type,
               size: waterBody.size || undefined,
+              gallons: waterBody.gallons ? Number(waterBody.gallons) : undefined,
               active: true,
             })),
           }),
@@ -1474,9 +1564,9 @@ function App() {
           `• ${body.name} | ${body.frequency}`,
       ),
       managementStatus === 'VIP'
-        ? '• VIP pricing applied: fixed 25% discount'
+        ? `• VIP pricing applied: fixed ${vipDiscountPercentage}% discount`
         : managementStatus === 'NEGOTIATED' && adjustmentPercentage > 0
-          ? `• Negotiated discount applied: ${adjustmentPercentage}%`
+          ? `• Negotiated pricing applied: fixed ${adjustmentPercentage}% discount`
         : '',
       proposalNotes.trim() ? `• Additional notes: ${proposalNotes.trim()}` : '',
       '',
@@ -1539,7 +1629,58 @@ function App() {
     };
   }
 
-  async function saveProposal(sendByEmail = false) {
+  async function createProposalEmailDraft(
+    propertyId: string,
+    activity: SalesActivity,
+    recipientEmail: string,
+    subject: string,
+    body: string,
+    pdfData?: ProposalPdfData,
+  ) {
+    const proposalData = pdfData ?? proposalPdfDataFromActivity(activity);
+    if (!proposalData) {
+      throw new Error('This proposal does not have enough saved data to generate its PDF.');
+    }
+
+    const pdfModule = await import('./proposalPdf');
+    const pdf = await pdfModule.createProposalPdf(proposalData);
+    const formData = new FormData();
+    formData.append('recipientEmail', recipientEmail);
+    formData.append('subject', subject);
+    formData.append('body', body);
+    formData.append('file', pdf.blob, pdf.fileName);
+
+    const response = await fetch(
+      `${API_URL}/properties/${propertyId}/sales-activities/${activity.id}/email-draft`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { message?: string } | null;
+      throw new Error(result?.message ?? 'The Outlook draft could not be created.');
+    }
+
+    const updated: SalesActivity = await response.json();
+    const replaceActivity = (property: Property) => ({
+      ...property,
+      salesActivities: property.salesActivities.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    });
+    setProperties((current) =>
+      current.map((property) =>
+        property.id === propertyId ? replaceActivity(property) : property,
+      ),
+    );
+    setSelectedProperty((current) =>
+      current?.id === propertyId ? replaceActivity(current) : current,
+    );
+    return updated;
+  }
+
+  async function saveProposal() {
     if (!selectedProperty || savingProposal) return;
 
     const includedBodies = proposalWaterBodies.filter((body) => body.include);
@@ -1556,28 +1697,27 @@ function App() {
       selectedProperty.contacts.find((relation) => relation.isPrimary) ??
       selectedProperty.contacts[0];
     const recipientEmail = primaryContact?.contact.email?.trim();
-    if (sendByEmail && !recipientEmail) {
-      window.alert('Add an email address to the primary contact before sending.');
+    if (!recipientEmail) {
+      window.alert('Add an email address to the primary contact before creating the draft.');
       return;
     }
     const notes = buildProposalEmailBody();
     const pdfData = buildProposalPdfData();
+    if (!pdfData) return;
 
     try {
       setSavingProposal(true);
-      const pdfModule = pdfData ? await import('./proposalPdf') : null;
-      const proposalData = pdfData
-        ? {
-            ...pdfData,
-            proposalDate: pdfData.proposalDate.toISOString(),
-            allocations: pdfModule?.allocateProposalCosts(
-              pdfData.waterBodies,
-              pdfData.monthlyTransportationCost,
-              pdfData.discountPercentage,
-              pdfData.totalMonthlyInvestment,
-            ),
-          }
-        : undefined;
+      const pdfModule = await import('./proposalPdf');
+      const proposalData = {
+        ...pdfData,
+        proposalDate: pdfData.proposalDate.toISOString(),
+        allocations: pdfModule.allocateProposalCosts(
+          pdfData.waterBodies,
+          pdfData.monthlyTransportationCost,
+          pdfData.discountPercentage,
+          pdfData.totalMonthlyInvestment,
+        ),
+      };
       const response = await fetch(
         `${API_URL}/properties/${selectedProperty.id}/sales-activities`,
         {
@@ -1592,18 +1732,43 @@ function App() {
       );
       if (!response.ok) throw new Error('Could not save proposal');
       let activity: SalesActivity = await response.json();
-      if (sendByEmail) {
-        const statusResponse = await fetch(
-          `${API_URL}/properties/${selectedProperty.id}/sales-activities/${activity.id}/status`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'SENT' }),
-          },
+
+      try {
+        activity = await createProposalEmailDraft(
+          selectedProperty.id,
+          activity,
+          recipientEmail,
+          `Blue Life Pools Proposal - ${selectedProperty.name}`,
+          notes,
+          pdfData,
         );
-        if (!statusResponse.ok) throw new Error('Could not register sent proposal');
-        activity = await statusResponse.json();
+      } catch (draftError) {
+        console.error(draftError);
+        setSelectedProperty({
+          ...selectedProperty,
+          salesActivities: [activity, ...selectedProperty.salesActivities],
+        });
+        setProperties((current) =>
+          current.map((property) =>
+            property.id === selectedProperty.id
+              ? {
+                  ...property,
+                  salesActivities: [activity, ...property.salesActivities],
+                }
+              : property,
+          ),
+        );
+        setPreviewActivityId(activity.id);
+        setProposalDraftNotes(activity.notes ?? '');
+        setShowProposal(false);
+        window.alert(
+          draftError instanceof Error
+            ? `The proposal was saved, but the email draft could not be created. ${draftError.message}`
+            : 'The proposal was saved, but the email draft could not be created.',
+        );
+        return;
       }
+
       setSelectedProperty({
         ...selectedProperty,
         salesActivities: [activity, ...selectedProperty.salesActivities],
@@ -1621,17 +1786,8 @@ function App() {
       setPreviewActivityId(activity.id);
       setProposalDraftNotes(activity.notes ?? '');
       setShowProposal(false);
-      if (pdfData && pdfModule) {
-        try {
-          await pdfModule.downloadProposalPdf(pdfData);
-        } catch (pdfError) {
-          console.error(pdfError);
-          window.alert('The proposal was saved, but the PDF could not be generated. Please try again.');
-        }
-      }
-      if (sendByEmail && recipientEmail) {
-        const subject = `Blue Life Pools Proposal - ${selectedProperty.name}`;
-        window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;
+      if (activity.emailDraftWebUrl) {
+        window.location.href = activity.emailDraftWebUrl;
       }
     } catch (error) {
       console.error(error);
@@ -1735,7 +1891,7 @@ function App() {
   }
 
   async function saveProposalText(activityId: string, notes: string) {
-    if (!selectedProperty) return false;
+    if (!selectedProperty) return null;
     setSavingProposalText(true);
     try {
       const response = await fetch(
@@ -1761,11 +1917,11 @@ function App() {
         ),
       );
       setProposalDraftNotes(updated.notes ?? '');
-      return true;
+      return updated;
     } catch (error) {
       console.error(error);
       window.alert('The proposal text could not be saved.');
-      return false;
+      return null;
     } finally {
       setSavingProposalText(false);
     }
@@ -1894,6 +2050,7 @@ function App() {
               name: waterBody.name.trim(),
               type: waterBody.type,
               size: waterBody.size || undefined,
+              gallons: waterBody.gallons ? Number(waterBody.gallons) : undefined,
               active: true,
             })),
 
@@ -2249,20 +2406,36 @@ function App() {
                             className="proposal-reminder-action proposal-reminder-action-primary"
                             type="button"
                             onClick={async () => {
-                              const updated = await recordProposalFollowUpForProperty(
-                                property.id,
-                                activity.id,
-                                'Proposal resent by email.',
-                                'EMAIL',
-                              );
-                              if (!updated) return;
-                              setShowProposalReminders(false);
-                              const subject = `Blue Life Pools Proposal - ${property.name}`;
-                              const body = updated.notes ?? activity.notes ?? '';
-                              window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                              try {
+                                const body = activity.notes ?? '';
+                                const updated = await createProposalEmailDraft(
+                                  property.id,
+                                  activity,
+                                  email,
+                                  `Blue Life Pools Proposal - ${property.name}`,
+                                  body,
+                                );
+                                await recordProposalFollowUpForProperty(
+                                  property.id,
+                                  activity.id,
+                                  'Proposal follow-up email draft created.',
+                                  'EMAIL',
+                                );
+                                setShowProposalReminders(false);
+                                if (updated.emailDraftWebUrl) {
+                                  window.location.href = updated.emailDraftWebUrl;
+                                }
+                              } catch (error) {
+                                console.error(error);
+                                window.alert(
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'The follow-up draft could not be created.',
+                                );
+                              }
                             }}
                           >
-                            Resend proposal
+                            Create follow-up draft
                           </button>
                         ) : (
                           <span className="proposal-reminder-no-email">No email</span>
@@ -3074,7 +3247,11 @@ function App() {
                         >
                           {formatLabel(waterBody.type)}: {waterBody.name}
                           {waterBody.size
+                            && waterBody.type !== 'SPA'
                             ? ` · ${formatLabel(waterBody.size)}`
+                            : ''}
+                          {waterBody.gallons
+                            ? ` · ${waterBody.gallons.toLocaleString('en-US')} gal`
                             : ''}
                         </span>
                       ),
@@ -3338,24 +3515,46 @@ function App() {
                                 ? proposalDraftNotes
                                 : activity.notes ?? '';
                               if (!email || !notes) return;
+                              if (activity.emailDraftWebUrl && activity.status === 'CREATED') {
+                                window.location.href = activity.emailDraftWebUrl;
+                                return;
+                              }
                               const saved = await saveProposalText(activity.id, notes);
                               if (!saved) return;
-                              const updated = activity.sentAt
-                                ? await recordProposalFollowUpForProperty(
+                              try {
+                                const updated = await createProposalEmailDraft(
+                                  selectedProperty.id,
+                                  saved,
+                                  email,
+                                  `Blue Life Pools Proposal - ${selectedProperty.name}`,
+                                  notes,
+                                );
+                                if (activity.sentAt) {
+                                  await recordProposalFollowUpForProperty(
                                     selectedProperty.id,
                                     activity.id,
-                                    'Proposal resent by email.',
+                                    'Proposal follow-up email draft created.',
                                     'EMAIL',
-                                  )
-                                : await updateProposalStatus(activity.id, 'SENT');
-                              if (!updated) return;
-                              const subject = `Blue Life Pools Proposal - ${selectedProperty.name}`;
-                              window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;
+                                  );
+                                }
+                                if (updated.emailDraftWebUrl) {
+                                  window.location.href = updated.emailDraftWebUrl;
+                                }
+                              } catch (error) {
+                                console.error(error);
+                                window.alert(
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'The email draft could not be created.',
+                                );
+                              }
                             }}
                           >
-                            {activity.status === 'SENT' || activity.status === 'APPROVED' || activity.status === 'EXPIRED'
-                              ? 'Send Again'
-                              : 'Send Proposal'}
+                            {activity.emailDraftWebUrl && activity.status === 'CREATED'
+                              ? 'Open Email Draft'
+                              : activity.emailDraftWebUrl
+                                ? 'Create New Draft'
+                                : 'Create Email Draft'}
                           </button>
                           <label className="status-control">
                             <select
@@ -3522,7 +3721,7 @@ function App() {
                 <div className="proposal-section-heading">
                   <div>
                     <h3>Transportation Cost</h3>
-                    <p>Estimated round-trip fuel cost is included in the monthly proposal.</p>
+                    <p>Estimated one-way fuel cost is included in the monthly proposal.</p>
                   </div>
                 </div>
                 <div className="transport-inputs">
@@ -3545,7 +3744,7 @@ function App() {
                       }}
                     />
                     <small className="transport-distance-help">
-                      Enter the one-way value shown in Google Maps. The return trip is added automatically.
+                      Enter the one-way value shown in Google Maps.
                     </small>
                   </div>
                   <div className="form-field">
@@ -3572,7 +3771,7 @@ function App() {
                   </div>
                   <div className="transport-formula">
                     {routeDistanceMiles !== null
-                      ? `${routeDistanceMiles} mi one way × 2 × ${serviceVisitsPerWeek} visits/week`
+                      ? `${routeDistanceMiles} mi one way × ${serviceVisitsPerWeek} visits/week`
                       : 'Waiting for route distance'}
                   </div>
                 </div>
@@ -3592,7 +3791,7 @@ function App() {
                       setManagementStatus(status);
                       setAdjustments(
                         status === 'VIP'
-                          ? '25'
+                          ? String(vipDiscountPercentage)
                           : status === 'CURRENT'
                             ? '0'
                             : '',
@@ -3600,7 +3799,7 @@ function App() {
                     }}
                   >
                     <option value="CURRENT">Current</option>
-                    <option value="VIP">VIP (25% discount)</option>
+                    <option value="VIP">VIP ({vipDiscountPercentage}% discount)</option>
                     <option value="NEGOTIATED">Negotiated</option>
                   </select>
                 </div>
@@ -3609,7 +3808,7 @@ function App() {
                     <label>Adjustment Discount (%)</label>
                     <input
                       type="number"
-                      value="25"
+                      value={vipDiscountPercentage}
                       readOnly
                     />
                   </div>
@@ -3691,21 +3890,23 @@ function App() {
                               <option value="DECORATIVE_WATER_FEATURE">Decorative Water Feature</option>
                             </select>
                           </td>
-                          <td>
-                            <select
-                              value={body.category}
-                              onChange={(event) =>
-                                updateProposalWaterBody(index, {
-                                  category: event.target.value,
-                                })
-                              }
-                            >
-                              <option value="">Select size</option>
-                              <option value="SMALL">Small</option>
-                              <option value="MEDIUM">Medium</option>
-                              <option value="LARGE">Large</option>
-                              <option value="EXTRA_LARGE">Extra Large</option>
-                            </select>
+                          <td className={body.type === 'SPA' ? 'water-body-category-cell is-hidden' : 'water-body-category-cell'}>
+                            {body.type !== 'SPA' && (
+                              <select
+                                value={body.category}
+                                onChange={(event) =>
+                                  updateProposalWaterBody(index, {
+                                    category: event.target.value,
+                                  })
+                                }
+                              >
+                                <option value="">Select size</option>
+                                <option value="SMALL">Small</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LARGE">Large</option>
+                                <option value="EXTRA_LARGE">Extra Large</option>
+                              </select>
+                            )}
                           </td>
                           <td>
                             <select
@@ -3808,10 +4009,10 @@ function App() {
                   <span>Water Bodies Monthly Subtotal</span>
                   <strong>${waterBodiesMonthlyInvestment.toLocaleString('en-US')} / month</strong>
                   {managementStatus === 'VIP' && (
-                    <small>VIP pricing applied: fixed 25% discount</small>
+                    <small>VIP pricing applied: fixed {vipDiscountPercentage}% discount</small>
                   )}
                   {managementStatus === 'NEGOTIATED' && adjustmentPercentage > 0 && (
-                    <small>Negotiated discount applied: {adjustmentPercentage}%</small>
+                    <small>Negotiated pricing applied: fixed {adjustmentPercentage}% discount</small>
                   )}
                 </div>
               </div>
@@ -3884,10 +4085,12 @@ function App() {
                 </button>
                 <button
                   className="secondary-button"
-                  onClick={() => saveProposal(false)}
+                  onClick={() => saveProposal()}
                   disabled={savingProposal}
                 >
-                  {savingProposal ? 'Saving & generating PDF...' : 'Save Proposal & Download PDF'}
+                  {savingProposal
+                    ? 'Saving & creating email draft...'
+                    : 'Save Proposal & Create Email Draft'}
                 </button>
               </div>
             </section>
