@@ -1717,7 +1717,7 @@ function App() {
     }
   }
 
-  async function sendProposalPdf(
+  async function sendProposalEmail(
     propertyId: string,
     activity: SalesActivity,
     recipientEmail: string,
@@ -1746,7 +1746,7 @@ function App() {
     );
     if (!response.ok) {
       const result = await response.json().catch(() => null) as { message?: string } | null;
-      throw new Error(result?.message ?? 'The proposal PDF could not be sent.');
+      throw new Error(result?.message ?? 'The proposal email could not be sent.');
     }
 
     const updated: SalesActivity = await response.json();
@@ -3602,7 +3602,7 @@ function App() {
                                 ? proposalDraftNotes
                                 : activity.notes ?? '';
                               if (!email || !notes) return;
-                              if (!window.confirm(`Send this proposal PDF to ${email}?`)) {
+                              if (!window.confirm(`Send this proposal email to ${email}?`)) {
                                 return;
                               }
 
@@ -3615,7 +3615,7 @@ function App() {
                                   ? activity
                                   : await saveProposalText(activity.id, notes);
                                 if (!saved) return;
-                                await sendProposalPdf(
+                                await sendProposalEmail(
                                   selectedProperty.id,
                                   saved,
                                   email,
@@ -3626,17 +3626,17 @@ function App() {
                                   await recordProposalFollowUpForProperty(
                                     selectedProperty.id,
                                     activity.id,
-                                    'Proposal PDF sent again by email.',
+                                    'Proposal email sent again with the PDF attached.',
                                     'EMAIL',
                                   );
                                 }
-                                window.alert(`Proposal PDF sent to ${email}.`);
+                                window.alert(`Proposal email sent to ${email}.`);
                               } catch (error) {
                                 console.error(error);
                                 window.alert(
                                   error instanceof Error
                                     ? error.message
-                                    : 'The proposal PDF could not be sent.',
+                                    : 'The proposal email could not be sent.',
                                 );
                               } finally {
                                 setProposalFileAction(null);
@@ -3644,10 +3644,10 @@ function App() {
                             }}
                           >
                             {activeFileAction === 'SEND'
-                              ? 'Sending PDF...'
+                              ? 'Sending Email...'
                               : activity.sentAt
-                                ? 'Send PDF Again'
-                                : 'Send PDF'}
+                                ? 'Send Email Again'
+                                : 'Send Email'}
                           </button>
                           <label className="status-control">
                             <select
