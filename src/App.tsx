@@ -676,6 +676,10 @@ function App() {
   const [reminderReferenceTime, setReminderReferenceTime] = useState(() => Date.now());
   const [focusedReminderActivityId, setFocusedReminderActivityId] = useState<string | null>(null);
   const [savingProposal, setSavingProposal] = useState(false);
+  const [proposalFileAction, setProposalFileAction] = useState<{
+    activityId: string;
+    action: 'CREATE' | 'SEND';
+  } | null>(null);
   const [previewActivityId, setPreviewActivityId] = useState<string | null>(null);
   const [proposalDraftNotes, setProposalDraftNotes] = useState('');
   const [, setSavingProposalText] = useState(false);
@@ -1686,6 +1690,83 @@ function App() {
     return updated;
   }
 
+  async function downloadProposalPdf(activity: SalesActivity) {
+    const proposalData = proposalPdfDataFromActivity(activity);
+    if (!proposalData) {
+      window.alert('This proposal does not have enough saved data to create its PDF.');
+      return;
+    }
+
+    try {
+      setProposalFileAction({ activityId: activity.id, action: 'CREATE' });
+      const pdfModule = await import('./proposalPdf');
+      const pdf = await pdfModule.createProposalPdf(proposalData);
+      const downloadUrl = URL.createObjectURL(pdf.blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = pdf.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
+    } catch (error) {
+      console.error(error);
+      window.alert('The proposal PDF could not be created.');
+    } finally {
+      setProposalFileAction(null);
+    }
+  }
+
+  async function sendProposalPdf(
+    propertyId: string,
+    activity: SalesActivity,
+    recipientEmail: string,
+    subject: string,
+    body: string,
+  ) {
+    const proposalData = proposalPdfDataFromActivity(activity);
+    if (!proposalData) {
+      throw new Error('This proposal does not have enough saved data to create its PDF.');
+    }
+
+    const pdfModule = await import('./proposalPdf');
+    const pdf = await pdfModule.createProposalPdf(proposalData);
+    const formData = new FormData();
+    formData.append('recipientEmail', recipientEmail);
+    formData.append('subject', subject);
+    formData.append('body', body);
+    formData.append('file', pdf.blob, pdf.fileName);
+
+    const response = await fetch(
+      `${API_URL}/properties/${propertyId}/sales-activities/${activity.id}/send-email`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { message?: string } | null;
+      throw new Error(result?.message ?? 'The proposal PDF could not be sent.');
+    }
+
+    const updated: SalesActivity = await response.json();
+    const replaceActivity = (property: Property) => ({
+      ...property,
+      salesActivities: property.salesActivities.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    });
+    setProperties((current) =>
+      current.map((property) =>
+        property.id === propertyId ? replaceActivity(property) : property,
+      ),
+    );
+    setSelectedProperty((current) =>
+      current?.id === propertyId ? replaceActivity(current) : current,
+    );
+    return updated;
+  }
+
   async function saveProposal() {
     if (!selectedProperty || savingProposal) return;
 
@@ -1699,14 +1780,6 @@ function App() {
       return;
     }
 
-    const primaryContact =
-      selectedProperty.contacts.find((relation) => relation.isPrimary) ??
-      selectedProperty.contacts[0];
-    const recipientEmail = primaryContact?.contact.email?.trim();
-    if (!recipientEmail) {
-      window.alert('Add an email address to the primary contact before creating the draft.');
-      return;
-    }
     const notes = buildProposalEmailBody();
     const pdfData = buildProposalPdfData();
     if (!pdfData) return;
@@ -1737,48 +1810,15 @@ function App() {
         },
       );
       if (!response.ok) throw new Error('Could not save proposal');
-      let activity: SalesActivity = await response.json();
-
-      try {
-        activity = await createProposalEmailDraft(
-          selectedProperty.id,
-          activity,
-          recipientEmail,
-          `Blue Life Pools Proposal - ${selectedProperty.name}`,
-          notes,
-          pdfData,
-        );
-      } catch (draftError) {
-        console.error(draftError);
-        setSelectedProperty({
-          ...selectedProperty,
-          salesActivities: [activity, ...selectedProperty.salesActivities],
-        });
-        setProperties((current) =>
-          current.map((property) =>
-            property.id === selectedProperty.id
-              ? {
-                  ...property,
-                  salesActivities: [activity, ...property.salesActivities],
-                }
-              : property,
-          ),
-        );
-        setPreviewActivityId(activity.id);
-        setProposalDraftNotes(activity.notes ?? '');
-        setShowProposal(false);
-        window.alert(
-          draftError instanceof Error
-            ? `The proposal was saved, but the email draft could not be created. ${draftError.message}`
-            : 'The proposal was saved, but the email draft could not be created.',
-        );
-        return;
-      }
-
-      setSelectedProperty({
-        ...selectedProperty,
-        salesActivities: [activity, ...selectedProperty.salesActivities],
-      });
+      const activity: SalesActivity = await response.json();
+      setSelectedProperty((current) =>
+        current?.id === selectedProperty.id
+          ? {
+              ...current,
+              salesActivities: [activity, ...current.salesActivities],
+            }
+          : current,
+      );
       setProperties((current) =>
         current.map((property) =>
           property.id === selectedProperty.id
@@ -1792,9 +1832,6 @@ function App() {
       setPreviewActivityId(activity.id);
       setProposalDraftNotes(activity.notes ?? '');
       setShowProposal(false);
-      if (activity.emailDraftWebUrl) {
-        window.location.href = activity.emailDraftWebUrl;
-      }
     } catch (error) {
       console.error(error);
       window.alert('The proposal could not be saved.');
@@ -3459,6 +3496,10 @@ function App() {
                       selectedProperty.contacts.find((contact) => contact.isPrimary) ??
                       selectedProperty.contacts[0];
                     if (!activity) return null;
+                    const activeFileAction =
+                      proposalFileAction?.activityId === activity.id
+                        ? proposalFileAction.action
+                        : null;
                     return (
                       <aside className="sales-email-preview" aria-label="Proposal email preview">
                         <div className="email-preview-header">
@@ -3538,23 +3579,43 @@ function App() {
                         />
                         <div className="email-preview-actions">
                           <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={Boolean(proposalFileAction)}
+                            onClick={() => void downloadProposalPdf(activity)}
+                          >
+                            {activeFileAction === 'CREATE' ? 'Creating PDF...' : 'Create PDF'}
+                          </button>
+                          <button
                             className="primary-button"
                             type="button"
-                            disabled={!primaryContact?.contact.email || !(previewActivityId === activity.id ? proposalDraftNotes : activity.notes)}
+                            disabled={
+                              Boolean(proposalFileAction) ||
+                              !primaryContact?.contact.email ||
+                              !(previewActivityId === activity.id ? proposalDraftNotes : activity.notes) ||
+                              activity.status === 'APPROVED' ||
+                              activity.status === 'REJECTED'
+                            }
                             onClick={async () => {
-                              const email = primaryContact?.contact.email;
+                              const email = primaryContact?.contact.email?.trim();
                               const notes = previewActivityId === activity.id
                                 ? proposalDraftNotes
                                 : activity.notes ?? '';
                               if (!email || !notes) return;
-                              if (activity.emailDraftWebUrl && activity.status === 'CREATED') {
-                                window.location.href = activity.emailDraftWebUrl;
+                              if (!window.confirm(`Send this proposal PDF to ${email}?`)) {
                                 return;
                               }
-                              const saved = await saveProposalText(activity.id, notes);
-                              if (!saved) return;
+
                               try {
-                                const updated = await createProposalEmailDraft(
+                                setProposalFileAction({
+                                  activityId: activity.id,
+                                  action: 'SEND',
+                                });
+                                const saved = notes === (activity.notes ?? '')
+                                  ? activity
+                                  : await saveProposalText(activity.id, notes);
+                                if (!saved) return;
+                                await sendProposalPdf(
                                   selectedProperty.id,
                                   saved,
                                   email,
@@ -3565,28 +3626,28 @@ function App() {
                                   await recordProposalFollowUpForProperty(
                                     selectedProperty.id,
                                     activity.id,
-                                    'Proposal follow-up email draft created.',
+                                    'Proposal PDF sent again by email.',
                                     'EMAIL',
                                   );
                                 }
-                                if (updated.emailDraftWebUrl) {
-                                  window.location.href = updated.emailDraftWebUrl;
-                                }
+                                window.alert(`Proposal PDF sent to ${email}.`);
                               } catch (error) {
                                 console.error(error);
                                 window.alert(
                                   error instanceof Error
                                     ? error.message
-                                    : 'The email draft could not be created.',
+                                    : 'The proposal PDF could not be sent.',
                                 );
+                              } finally {
+                                setProposalFileAction(null);
                               }
                             }}
                           >
-                            {activity.emailDraftWebUrl && activity.status === 'CREATED'
-                              ? 'Open Email Draft'
-                              : activity.emailDraftWebUrl
-                                ? 'Create New Draft'
-                                : 'Create Email Draft'}
+                            {activeFileAction === 'SEND'
+                              ? 'Sending PDF...'
+                              : activity.sentAt
+                                ? 'Send PDF Again'
+                                : 'Send PDF'}
                           </button>
                           <label className="status-control">
                             <select
@@ -4121,8 +4182,8 @@ function App() {
                   disabled={savingProposal}
                 >
                   {savingProposal
-                    ? 'Saving & creating email draft...'
-                    : 'Save Proposal & Create Email Draft'}
+                    ? 'Saving...'
+                    : 'Save Proposal'}
                 </button>
               </div>
             </section>
