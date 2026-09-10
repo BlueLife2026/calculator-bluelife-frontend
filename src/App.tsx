@@ -684,7 +684,6 @@ function App() {
     activityId: string;
     action: 'CREATE' | 'EMAIL';
   } | null>(null);
-  const [showProposalFollowUps, setShowProposalFollowUps] = useState(false);
   const [previewActivityId, setPreviewActivityId] = useState<string | null>(null);
   const [proposalDraftNotes, setProposalDraftNotes] = useState('');
   const [, setSavingProposalText] = useState(false);
@@ -3552,7 +3551,6 @@ function App() {
                               }
                             }}
                           />
-                          {showProposalFollowUps ? (
                             <aside
                               className="proposal-follow-up-drawer"
                               id={`proposal-follow-ups-${activity.id}`}
@@ -3563,14 +3561,6 @@ function App() {
                                   <span>Follow-ups</span>
                                   <strong>{activity.followUps?.length ?? 0}</strong>
                                 </div>
-                                <button
-                                  type="button"
-                                  aria-label="Hide follow-ups"
-                                  title="Hide follow-ups"
-                                  onClick={() => setShowProposalFollowUps(false)}
-                                >
-                                  &times;
-                                </button>
                               </div>
                               <button
                               className="proposal-follow-up-log-button"
@@ -3610,18 +3600,6 @@ function App() {
                             </p>
                           )}
                             </aside>
-                          ) : (
-                            <button
-                              className="proposal-follow-up-vertical-tab"
-                              type="button"
-                              aria-expanded="false"
-                              aria-controls={`proposal-follow-ups-${activity.id}`}
-                              onClick={() => setShowProposalFollowUps(true)}
-                            >
-                              <span>Follow-ups</span>
-                              <strong>{activity.followUps?.length ?? 0}</strong>
-                            </button>
-                          )}
                         </div>
                         <div className="email-preview-actions">
                           <button
