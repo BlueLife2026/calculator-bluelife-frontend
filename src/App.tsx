@@ -2252,7 +2252,7 @@ function App() {
   function renderAppSidebar() {
     const areas: Array<{ id: AppArea; label: string; icon: string }> = [
       { id: 'home', label: 'Home', icon: '⌂' },
-      { id: 'commercial', label: 'Commercial CRM', icon: '◎' },
+      { id: 'commercial', label: 'Commercial', icon: '◎' },
       { id: 'chemicals', label: 'Químicos', icon: '⚗' },
       { id: 'estimates', label: 'Estimates', icon: '$' },
       { id: 'operations', label: 'Operations', icon: '◇' },

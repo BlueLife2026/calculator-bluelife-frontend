@@ -2972,13 +2972,13 @@ tbody tr:hover {
 }
 
 @media (max-width: 800px) {
-  .app-page { padding: 20px 16px 94px; }
-  .app-sidebar { top: auto; right: 0; width: auto; height: 72px; flex-direction: row; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0, 76, 115, 0.18); }
+  .app-page { padding: 18px 12px calc(92px + env(safe-area-inset-bottom)); }
+  .app-sidebar { top: auto; right: 0; width: auto; height: calc(78px + env(safe-area-inset-bottom)); box-sizing: border-box; flex-direction: row; padding: 6px 5px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0, 76, 115, 0.18); }
   .sidebar-brand,
   .sidebar-footer { display: none; }
   .app-sidebar nav { display: grid; width: 100%; margin: 0; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; }
-  .app-sidebar nav button { justify-content: center; flex-direction: column; gap: 2px; padding: 3px 2px; font-size: 8px; text-align: center; }
-  .app-sidebar nav button > span { width: 25px; height: 25px; }
+  .app-sidebar nav button { min-width: 0; min-height: 62px; justify-content: center; flex-direction: column; gap: 2px; padding: 3px 1px; font-size: 7px; line-height: 1.1; text-align: center; }
+  .app-sidebar nav button > span { width: 27px; height: 27px; }
   .area-page-header { margin-bottom: 20px; }
   .area-page-header h1 { font-size: 27px; }
   .area-header-actions { width: 100%; align-items: stretch; flex-direction: column; }
@@ -2994,16 +2994,44 @@ tbody tr:hover {
   .area-landing-grid { grid-template-columns: 1fr; }
   .proposal-services-card .proposal-section-heading { align-items: flex-start; flex-direction: column; }
   .proposal-services-grid { grid-template-columns: 1fr; }
-  .chemicals-validation-flow { overflow-x: auto; grid-template-columns: repeat(3, 220px); }
-  .chemicals-kpis { grid-template-columns: 1fr; }
+  .chemicals-page-header { gap: 13px; margin-bottom: 15px; }
+  .chemicals-page-header h1 { font-size: 29px; }
+  .chemicals-page-header p { margin-top: 5px; font-size: 13px; line-height: 1.45; }
+  .chemicals-page-header .area-header-actions { gap: 8px; }
+  .chemicals-page-header .integration-pill,
+  .chemicals-export-button { min-height: 42px; box-sizing: border-box; }
+  .chemicals-tabs { width: 100%; margin: -2px 0 13px; }
+  .chemicals-tabs button { min-width: 0; flex: 1 1 25%; padding: 10px 4px 9px; font-size: 10px; }
+  .chemicals-validation-flow { overflow: visible; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chemicals-validation-flow article { min-width: 0; align-items: flex-start; flex-direction: column; gap: 7px; padding: 10px; }
+  .chemicals-validation-flow article > span { width: 27px; height: 27px; }
+  .chemicals-validation-flow strong { font-size: 10px; line-height: 1.25; }
+  .chemicals-validation-flow small { font-size: 8px; line-height: 1.2; }
+  .chemicals-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .chemicals-kpis article { min-height: 72px; justify-content: space-between; padding: 10px; }
+  .chemicals-kpis span { min-height: 25px; font-size: 8px; line-height: 1.25; }
+  .chemicals-kpis strong { margin: 2px 0 0; font-size: 20px; }
+  .chemicals-kpis small { display: none; }
   .chemicals-context-grid { grid-template-columns: 1fr; }
   .chemicals-quantity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chemicals-form-card form { padding: 16px; }
   .chemicals-card-heading { padding: 15px 16px; }
   .chemicals-card-heading > small { display: none; }
+  .chemicals-context-grid input,
+  .chemicals-context-grid select,
+  .chemicals-notes-field textarea,
+  .chemical-quantity-field input { min-height: 44px; font-size: 16px; }
+  .chemical-quantity-field { padding: 9px; }
+  .chemical-quantity-field > div { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .chemical-quantity-field span { padding-left: 2px; }
+  .chemicals-quantity-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .chemicals-form-actions button { min-height: 44px; }
+  .chemicals-history-card { margin-bottom: 8px; }
+  .chemicals-report-list { max-height: none; }
+  .chemical-report-topline { flex-wrap: wrap; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 350px) {
   .chemicals-quantity-grid { grid-template-columns: 1fr; }
   .chemicals-form-actions { align-items: stretch; flex-direction: column-reverse; }
   .chemicals-form-actions button { width: 100%; }
