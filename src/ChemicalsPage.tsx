@@ -47,9 +47,8 @@ const chemicalOwnerTokenKey = 'bluelife-chemicals-owner-token';
 const chemicalFields: Array<{
   key: QuantityKey;
   label: string;
-  unit?: string;
   unitKey?: UnitKey;
-  unitOptions?: Array<{ value: string; label: string }>;
+  unitOptions: Array<{ value: string; label: string }>;
   shortLabel: string;
 }> = [
   {
@@ -62,9 +61,24 @@ const chemicalFields: Array<{
     ],
     shortLabel: 'Tabs',
   },
-  { key: 'liquidChlorineGallons', label: 'Cloro líquido', unit: 'galones', shortLabel: 'Cloro' },
-  { key: 'muriaticAcidGallons', label: 'Ácido muriático', unit: 'galones', shortLabel: 'Ácido' },
-  { key: 'shockScoops', label: 'Shock', unit: 'scoops', shortLabel: 'Shock' },
+  {
+    key: 'liquidChlorineGallons',
+    label: 'Cloro líquido',
+    unitOptions: [{ value: 'gallons', label: 'galones' }],
+    shortLabel: 'Cloro',
+  },
+  {
+    key: 'muriaticAcidGallons',
+    label: 'Ácido muriático',
+    unitOptions: [{ value: 'gallons', label: 'galones' }],
+    shortLabel: 'Ácido',
+  },
+  {
+    key: 'shockScoops',
+    label: 'Shock',
+    unitOptions: [{ value: 'scoops', label: 'scoops' }],
+    shortLabel: 'Shock',
+  },
   {
     key: 'dePowderBags',
     label: 'Polvo DE',
@@ -75,7 +89,12 @@ const chemicalFields: Array<{
     ],
     shortLabel: 'DE',
   },
-  { key: 'bicarbonateScoops', label: 'Bicarbonato', unit: 'scoops', shortLabel: 'Bicarb.' },
+  {
+    key: 'bicarbonateScoops',
+    label: 'Bicarbonato',
+    unitOptions: [{ value: 'scoops', label: 'scoops' }],
+    shortLabel: 'Bicarb.',
+  },
   {
     key: 'stabilizerScoops',
     label: 'Estabilizador',
@@ -86,8 +105,18 @@ const chemicalFields: Array<{
     ],
     shortLabel: 'Estab.',
   },
-  { key: 'saltBags', label: 'Sal', unit: 'bolsas', shortLabel: 'Sal' },
-  { key: 'phosphatesOunces', label: 'Fosfatos', unit: 'onzas', shortLabel: 'Fosfatos' },
+  {
+    key: 'saltBags',
+    label: 'Sal',
+    unitOptions: [{ value: 'bags', label: 'bolsas' }],
+    shortLabel: 'Sal',
+  },
+  {
+    key: 'phosphatesOunces',
+    label: 'Fosfatos',
+    unitOptions: [{ value: 'ounces', label: 'onzas' }],
+    shortLabel: 'Fosfatos',
+  },
 ];
 
 function localDate() {
@@ -148,7 +177,7 @@ function selectedUnitLabel(
   report: ChemicalReport,
   chemical: (typeof chemicalFields)[number],
 ) {
-  if (!chemical.unitKey || !chemical.unitOptions) return chemical.unit;
+  if (!chemical.unitKey) return chemical.unitOptions[0]?.label ?? '';
   const fallbackUnit = {
     tabsUnit: 'units',
     dePowderUnit: 'bags',
@@ -613,25 +642,27 @@ export function ChemicalsPage({
                       value={form[chemical.key]}
                       onChange={(event) => updateQuantity(chemical.key, event.target.value)}
                     />
-                    {chemical.unitKey && chemical.unitOptions ? (
-                      <select
-                        className="chemical-unit-select"
-                        aria-label={`Unidad de medida para ${chemical.label}`}
-                        value={form[chemical.unitKey]}
-                        onChange={(event) =>
+                    <select
+                      className="chemical-unit-select"
+                      aria-label={`Unidad de medida para ${chemical.label}`}
+                      value={
+                        chemical.unitKey
+                          ? form[chemical.unitKey]
+                          : chemical.unitOptions[0]?.value ?? ''
+                      }
+                      onChange={(event) => {
+                        if (chemical.unitKey) {
                           setForm((current) => ({
                             ...current,
-                            [chemical.unitKey!]: event.target.value,
-                          }))
+                            [chemical.unitKey as UnitKey]: event.target.value,
+                          }));
                         }
-                      >
-                        {chemical.unitOptions.map((option) => (
-                          <option value={option.value} key={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="chemical-unit-label">{chemical.unit}</span>
-                    )}
+                      }}
+                    >
+                      {chemical.unitOptions.map((option) => (
+                        <option value={option.value} key={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               ))}
