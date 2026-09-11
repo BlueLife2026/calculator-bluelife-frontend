@@ -692,6 +692,9 @@ function App() {
   const [search, setSearch] =
     useState('');
 
+  const [proposalStatusFilter, setProposalStatusFilter] =
+    useState<SalesActivityStatus | null>(null);
+
   const [
     selectedProperty,
     setSelectedProperty,
@@ -997,6 +1000,20 @@ function App() {
         },
       );
     }, [properties, search]);
+
+  const displayedProperties = useMemo(() => {
+    if (!proposalStatusFilter) {
+      return filteredProperties;
+    }
+
+    return filteredProperties.filter((property) =>
+      property.salesActivities.some(
+        (activity) =>
+          activity.type === 'PROPOSAL' &&
+          (activity.status ?? 'CREATED') === proposalStatusFilter,
+      ),
+    );
+  }, [filteredProperties, proposalStatusFilter]);
 
   const dashboardStats = useMemo(() => {
     const typeCounts = filteredProperties.reduce<Record<string, number>>((counts, property) => {
@@ -4913,9 +4930,16 @@ function App() {
                     const count = dashboardStats.proposalCounts[status] ?? 0;
                     const value = dashboardStats.proposalValues[status] ?? 0;
                     return (
-                      <div
-                        className={`proposal-pool-option ${status === 'CREATED' ? 'proposal-pool-option-capacity ' : ''}${status === 'APPROVED' ? 'proposal-pool-option-water ' : ''}status-${status.toLowerCase()}`}
+                      <button
+                        type="button"
+                        aria-pressed={proposalStatusFilter === status}
+                        className={`proposal-pool-option ${proposalStatusFilter === status ? 'proposal-pool-option-selected ' : ''}${status === 'CREATED' ? 'proposal-pool-option-capacity ' : ''}${status === 'APPROVED' ? 'proposal-pool-option-water ' : ''}status-${status.toLowerCase()}`}
                         key={status}
+                        onClick={() =>
+                          setProposalStatusFilter((currentStatus) =>
+                            currentStatus === status ? null : status,
+                          )
+                        }
                       >
                         <i />
                         <span>
@@ -4923,7 +4947,7 @@ function App() {
                           <small>{count} {count === 1 ? 'proposal' : 'proposals'}</small>
                         </span>
                         <b>{formatDashboardCurrency(value)}</b>
-                      </div>
+                      </button>
                     );
                   })}
               </div>
@@ -4943,6 +4967,24 @@ function App() {
               Prospects and properties
               registered in BlueLife.
             </p>
+
+            {proposalStatusFilter && (
+              <div className="property-proposal-filter">
+                <span className={`proposal-status status-${proposalStatusFilter.toLowerCase()}`}>
+                  {proposalStatusLabel(proposalStatusFilter)}
+                </span>
+                <span>
+                  {displayedProperties.length}{' '}
+                  {displayedProperties.length === 1 ? 'property' : 'properties'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setProposalStatusFilter(null)}
+                >
+                  Show all
+                </button>
+              </div>
+            )}
           </div>
 
           <input
@@ -4989,7 +5031,17 @@ function App() {
             </thead>
 
             <tbody>
-              {filteredProperties.map(
+              {displayedProperties.length === 0 ? (
+                <tr>
+                  <td className="properties-filter-empty" colSpan={8}>
+                    {proposalStatusFilter
+                      ? 'No properties have proposals in this status.'
+                      : search.trim()
+                        ? 'No properties match this search.'
+                        : 'No properties registered yet.'}
+                  </td>
+                </tr>
+              ) : displayedProperties.map(
                 (property) => (
                   <tr
                     key={

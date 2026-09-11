@@ -1257,6 +1257,7 @@ tbody tr:hover {
 
 .proposal-pool-option {
   display: grid;
+  width: 100%;
   min-width: 0;
   grid-template-columns: 9px minmax(0, 1fr) auto;
   align-items: center;
@@ -1266,7 +1267,21 @@ tbody tr:hover {
   padding: 12px;
   background: rgba(255, 255, 255, 0.82);
   color: #344054;
+  font: inherit;
+  cursor: pointer;
   text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.proposal-pool-option:hover {
+  transform: translateY(-1px);
+  border-color: #8ecceb;
+  box-shadow: 0 5px 14px rgba(0, 95, 140, 0.1);
+}
+
+.proposal-pool-option:focus-visible {
+  outline: 3px solid rgba(12, 113, 195, 0.24);
+  outline-offset: 2px;
 }
 
 .proposal-pool-option-capacity {
@@ -1279,6 +1294,16 @@ tbody tr:hover {
   border-color: #62c58c;
   background: #f2fbf5;
   box-shadow: 0 0 0 2px rgba(26, 156, 82, 0.1);
+}
+
+.proposal-pool-option-selected {
+  border-color: #006da3;
+  box-shadow: 0 0 0 3px rgba(12, 113, 195, 0.2), 0 7px 18px rgba(0, 95, 140, 0.12);
+}
+
+.proposal-pool-option-selected.proposal-pool-option-water {
+  border-color: #168147;
+  box-shadow: 0 0 0 3px rgba(26, 156, 82, 0.2), 0 7px 18px rgba(22, 129, 71, 0.12);
 }
 
 .proposal-pool-option > i {
@@ -1327,6 +1352,40 @@ tbody tr:hover {
 
 .proposal-pool-option.status-expired > i {
   background: #e7a622;
+}
+
+.property-proposal-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.property-proposal-filter button {
+  border: 0;
+  padding: 3px 2px;
+  background: transparent;
+  color: #0876ba;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.property-proposal-filter button:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid rgba(12, 113, 195, 0.2);
+  outline-offset: 2px;
+}
+
+.properties-filter-empty {
+  padding: 36px 20px;
+  color: #667085;
+  text-align: center;
 }
 
 @keyframes proposal-pool-wave {
