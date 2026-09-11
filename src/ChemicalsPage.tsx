@@ -27,7 +27,6 @@ type ChemicalReport = Record<QuantityKey, number | string> & {
   waterBodyId: string | null;
   waterBodyName: string | null;
   notes: string | null;
-  validationStatus: string;
   createdAt: string;
 };
 
@@ -172,9 +171,6 @@ export function ChemicalsPage({
   const reportsToday = reports.filter(
     (report) => report.serviceDate.slice(0, 10) === localDate(),
   ).length;
-  const pendingReports = reports.filter(
-    (report) => report.validationStatus === 'PENDING',
-  ).length;
   const techniciansReported = new Set(
     reports.map((report) => report.technicianName),
   ).size;
@@ -289,15 +285,6 @@ export function ChemicalsPage({
             <span className="area-eyebrow">CONTROL OPERATIVO</span>
             <h1>Químicos</h1>
           </div>
-          <div className="area-header-actions">
-            <span className="integration-pill"><i /> Registro en base de datos activo</span>
-            <a
-              className="secondary-button chemicals-export-button"
-              href={`${API_URL}/chemicals/reports/export`}
-            >
-              Exportar para Excel
-            </a>
-          </div>
         </header>
       )}
 
@@ -309,7 +296,6 @@ export function ChemicalsPage({
 
           <section className="chemicals-kpis">
             <article><span>Registros de hoy</span><strong>{reportsToday}</strong><small>Retiros informados por el equipo</small></article>
-            <article><span>Pendientes de validar</span><strong>{pendingReports}</strong><small>Esperando cruce con las otras fuentes</small></article>
             <article><span>Técnicos con registros</span><strong>{techniciansReported}</strong><small>En el historial disponible</small></article>
           </section>
 
@@ -500,7 +486,6 @@ export function ChemicalsPage({
                         <strong>{report.technicianName}</strong>
                         <small>{report.propertyName || 'Retiro de bodega'}</small>
                       </div>
-                      <span>Pendiente de validar</span>
                     </div>
                     <dl>
                       <div><dt>Fecha</dt><dd>{formatReportDate(report.serviceDate)}</dd></div>
@@ -522,6 +507,14 @@ export function ChemicalsPage({
           )}
         </section>}
       </div>
+
+      {!isSharedForm && (
+        <footer className="chemicals-page-tools">
+          <a href={`${API_URL}/chemicals/reports/export`}>
+            Descargar registros para Excel
+          </a>
+        </footer>
+      )}
     </div>
   );
 }

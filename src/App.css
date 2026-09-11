@@ -2515,13 +2515,23 @@ tbody tr:hover {
     #f7fafb;
 }
 
-.chemicals-export-button {
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+.chemicals-page-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e4edf1;
+}
+
+.chemicals-page-tools a {
+  color: #667085;
+  font-size: 10px;
   text-decoration: none;
+}
+
+.chemicals-page-tools a:hover {
+  color: var(--bluelife-blue-dark);
+  text-decoration: underline;
 }
 
 .chemicals-tabs {
@@ -2554,67 +2564,9 @@ tbody tr:hover {
   opacity: 0.48;
 }
 
-.chemicals-validation-flow {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  margin-bottom: 14px;
-  overflow: hidden;
-  border: 1px solid #d8e4df;
-  border-radius: 14px;
-  background: #d8e4df;
-}
-
-.chemicals-validation-flow article {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 14px 16px;
-  background: white;
-}
-
-.chemicals-validation-flow article > span {
-  display: grid;
-  width: 29px;
-  height: 29px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  background: #eef2f6;
-  color: #667085;
-  font-size: 10px;
-  font-weight: 850;
-}
-
-.chemicals-validation-flow .chemicals-source-active {
-  background: #f2fbf5;
-}
-
-.chemicals-validation-flow .chemicals-source-active > span {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.chemicals-validation-flow article div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.chemicals-validation-flow strong {
-  color: #344054;
-  font-size: 12px;
-}
-
-.chemicals-validation-flow small {
-  color: #7b909b;
-  font-size: 10px;
-}
-
 .chemicals-kpis {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -3210,16 +3162,10 @@ tbody tr:hover {
   .chemicals-page-header h1 { font-size: 29px; }
   .chemicals-page-header p { margin-top: 5px; font-size: 13px; line-height: 1.45; }
   .chemicals-page-header .area-header-actions { gap: 8px; }
-  .chemicals-page-header .integration-pill,
-  .chemicals-export-button { min-height: 42px; box-sizing: border-box; }
+  .chemicals-page-header .integration-pill { min-height: 42px; box-sizing: border-box; }
   .chemicals-tabs { width: 100%; margin: -2px 0 13px; }
   .chemicals-tabs button { min-width: 0; flex: 1 1 25%; padding: 10px 4px 9px; font-size: 10px; }
-  .chemicals-validation-flow { overflow: visible; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .chemicals-validation-flow article { min-width: 0; align-items: flex-start; flex-direction: column; gap: 7px; padding: 10px; }
-  .chemicals-validation-flow article > span { width: 27px; height: 27px; }
-  .chemicals-validation-flow strong { font-size: 10px; line-height: 1.25; }
-  .chemicals-validation-flow small { font-size: 8px; line-height: 1.2; }
-  .chemicals-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .chemicals-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
   .chemicals-kpis article { min-height: 72px; justify-content: space-between; padding: 10px; }
   .chemicals-kpis span { min-height: 25px; font-size: 8px; line-height: 1.25; }
   .chemicals-kpis strong { margin: 2px 0 0; font-size: 20px; }
