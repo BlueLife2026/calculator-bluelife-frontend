@@ -283,12 +283,12 @@ export function ChemicalsPage({
     <div className={`page chemicals-page ${isSharedForm ? 'chemicals-shared-page' : 'app-page'}`}>
       {!isSharedForm && sidebar}
 
-      <header className="area-page-header chemicals-page-header">
-        <div>
-          <span className="area-eyebrow">CONTROL OPERATIVO</span>
-          <h1>Químicos</h1>
-        </div>
-        {!isSharedForm && (
+      {!isSharedForm && (
+        <header className="area-page-header chemicals-page-header">
+          <div>
+            <span className="area-eyebrow">CONTROL OPERATIVO</span>
+            <h1>Químicos</h1>
+          </div>
           <div className="area-header-actions">
             <span className="integration-pill"><i /> Registro en base de datos activo</span>
             <a
@@ -298,8 +298,8 @@ export function ChemicalsPage({
               Exportar para Excel
             </a>
           </div>
-        )}
-      </header>
+        </header>
+      )}
 
       {!isSharedForm && (
         <>
