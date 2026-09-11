@@ -103,6 +103,7 @@ type WaterBody = {
 };
 
 type SalesActivityStatus = 'CREATED' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+type ProposalDashboardSelection = 'PIPELINE' | SalesActivityStatus;
 
 type ProposalFollowUp = {
   id: string;
@@ -691,6 +692,8 @@ function App() {
 
   const [search, setSearch] =
     useState('');
+  const [proposalDashboardSelection, setProposalDashboardSelection] =
+    useState<ProposalDashboardSelection>('PIPELINE');
 
   const [
     selectedProperty,
@@ -1035,14 +1038,29 @@ function App() {
       totalProposalValue,
       activeProposalValue:
         (proposalValues.CREATED ?? 0) + (proposalValues.SENT ?? 0),
-      approvedProposalValue: proposalValues.APPROVED ?? 0,
-      maximumProposalValue: Math.max(...Object.values(proposalValues), 1),
+      activeProposalCount:
+        (proposalCounts.CREATED ?? 0) + (proposalCounts.SENT ?? 0),
       propertyCount: filteredProperties.length,
       clientCount: filteredProperties.filter(
         (property) => property.lifecycleStatus === 'CLIENT',
       ).length,
     };
   }, [filteredProperties]);
+
+  const proposalPoolMetric = proposalDashboardSelection === 'PIPELINE'
+    ? {
+        label: 'Active pipeline',
+        value: dashboardStats.activeProposalValue,
+        count: dashboardStats.activeProposalCount,
+      }
+    : {
+        label: proposalStatusLabel(proposalDashboardSelection),
+        value: dashboardStats.proposalValues[proposalDashboardSelection] ?? 0,
+        count: dashboardStats.proposalCounts[proposalDashboardSelection] ?? 0,
+      };
+  const proposalPoolFill = dashboardStats.totalProposalValue > 0
+    ? Math.min(100, (proposalPoolMetric.value / dashboardStats.totalProposalValue) * 100)
+    : 0;
 
   const filteredEstimates = useMemo(() => {
     const term = estimateSearch.trim().toLowerCase();
@@ -4865,64 +4883,76 @@ function App() {
             </div>
           </div>
 
-          <div className="dashboard-chart-card proposal-value-chart">
-            <div className="proposal-value-heading">
+          <div className="dashboard-chart-card proposal-pool-chart">
+            <div className="proposal-pool-heading">
               <div>
-                <span>MONTHLY VALUE</span>
-                <h3>Proposal pipeline by status</h3>
-                <p>Quantity and monthly investment represented in each stage.</p>
+                <span>COMMERCIAL POOL</span>
+                <h3>Monthly proposal value</h3>
+                <p>Select a stage to see how much of the quoted monthly value fills the pool.</p>
               </div>
-              <div className="proposal-value-grand-total">
-                <span>All proposals</span>
+              <div className="proposal-pool-capacity">
+                <span>Total pool capacity</span>
                 <strong>{formatDashboardCurrency(dashboardStats.totalProposalValue)}</strong>
-                <small>per month</small>
+                <small>{dashboardStats.totalProposals} proposals</small>
               </div>
             </div>
 
-            <div className="proposal-value-highlights">
-              <article>
-                <span>Active pipeline</span>
-                <strong>{formatDashboardCurrency(dashboardStats.activeProposalValue)}</strong>
-                <small>Created + sent</small>
-              </article>
-              <article>
-                <span>Approved monthly</span>
-                <strong>{formatDashboardCurrency(dashboardStats.approvedProposalValue)}</strong>
-                <small>Converted proposal value</small>
-              </article>
-              <article>
-                <span>Average proposal</span>
-                <strong>
-                  {formatDashboardCurrency(
-                    dashboardStats.totalProposals
-                      ? dashboardStats.totalProposalValue / dashboardStats.totalProposals
-                      : 0,
-                  )}
-                </strong>
-                <small>Across the current search</small>
-              </article>
-            </div>
-
-            <div className="proposal-value-bars">
-              {proposalBoardStatuses.map((status) => {
-                const count = dashboardStats.proposalCounts[status] ?? 0;
-                const value = dashboardStats.proposalValues[status] ?? 0;
-                return (
-                  <div className={`proposal-value-row status-${status.toLowerCase()}`} key={status}>
-                    <div className="proposal-value-label">
-                      <i />
-                      <span>
-                        <strong>{proposalStatusLabel(status)}</strong>
-                        <small>{count} {count === 1 ? 'proposal' : 'proposals'}</small>
-                      </span>
-                    </div>
-                    <div className="proposal-value-track" aria-hidden="true">
-                      <i style={{ width: `${(value / dashboardStats.maximumProposalValue) * 100}%` }} />
-                    </div>
-                    <strong className="proposal-value-amount">{formatDashboardCurrency(value)}</strong>
+            <div className="proposal-pool-layout">
+              <div className="proposal-pool-visual-wrap">
+                <div className="proposal-pool-shell">
+                  <div
+                    className="proposal-pool-water"
+                    style={{ height: `${proposalPoolFill}%` }}
+                    aria-hidden="true"
+                  >
+                    <i className="proposal-pool-wave proposal-pool-wave-one" />
+                    <i className="proposal-pool-wave proposal-pool-wave-two" />
+                    <i className="proposal-pool-bubble proposal-pool-bubble-one" />
+                    <i className="proposal-pool-bubble proposal-pool-bubble-two" />
                   </div>
-                );
-              })}
+                  <div className="proposal-pool-lanes" aria-hidden="true"><i /><i /><i /></div>
+                  <div className="proposal-pool-readout" aria-live="polite">
+                    <span>{proposalPoolMetric.label}</span>
+                    <strong>{formatDashboardCurrency(proposalPoolMetric.value)}</strong>
+                    <small>
+                      {proposalPoolMetric.count} {proposalPoolMetric.count === 1 ? 'proposal' : 'proposals'}
+                    </small>
+                  </div>
+                </div>
+                <div className="proposal-pool-scale">
+                  <strong>{Math.round(proposalPoolFill)}% filled</strong>
+                  <span>of all quoted monthly value</span>
+                </div>
+              </div>
+
+              <div className="proposal-pool-controls" aria-label="Proposal value stage">
+                {(['PIPELINE', ...proposalBoardStatuses] as ProposalDashboardSelection[])
+                  .map((selection) => {
+                    const isPipeline = selection === 'PIPELINE';
+                    const count = isPipeline
+                      ? dashboardStats.activeProposalCount
+                      : dashboardStats.proposalCounts[selection] ?? 0;
+                    const value = isPipeline
+                      ? dashboardStats.activeProposalValue
+                      : dashboardStats.proposalValues[selection] ?? 0;
+                    const label = isPipeline ? 'Active pipeline' : proposalStatusLabel(selection);
+                    return (
+                      <button
+                        className={`${proposalDashboardSelection === selection ? 'proposal-pool-option-active ' : ''}status-${selection.toLowerCase()}`}
+                        type="button"
+                        key={selection}
+                        onClick={() => setProposalDashboardSelection(selection)}
+                      >
+                        <i />
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{count} {count === 1 ? 'proposal' : 'proposals'}</small>
+                        </span>
+                        <b>{formatDashboardCurrency(value)}</b>
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         </div>
