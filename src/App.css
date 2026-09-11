@@ -3319,13 +3319,14 @@ tbody tr:hover {
   font-weight: 700;
 }
 
-.chemical-quantity-field > div {
+.chemical-quantity-control {
   display: flex;
   align-items: center;
   gap: 7px;
 }
 
-.chemical-quantity-field input {
+.chemical-quantity-field input,
+.chemical-unit-select {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -3338,10 +3339,32 @@ tbody tr:hover {
   font-weight: 700;
 }
 
-.chemical-quantity-field span {
+.chemical-unit-label {
   flex: 0 0 auto;
-  color: #7b909b;
-  font-size: 9px;
+  border-radius: 7px;
+  padding: 6px 7px;
+  background: #eef6ff;
+  color: #175a91;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.chemical-unit-select {
+  width: auto;
+  max-width: 98px;
+  flex: 0 0 auto;
+  padding-right: 24px;
+  border-color: #9fc7e8;
+  background-color: #eef6ff;
+  color: #175a91;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chemical-unit-select:focus {
+  border-color: #2f80bd;
+  outline: 3px solid rgba(47, 128, 189, 0.14);
 }
 
 .chemicals-notes-field {
@@ -3645,8 +3668,9 @@ tbody tr:hover {
   .chemicals-notes-field textarea,
   .chemical-quantity-field input { min-height: 44px; font-size: 16px; }
   .chemical-quantity-field { padding: 9px; }
-  .chemical-quantity-field > div { align-items: flex-start; flex-direction: column; gap: 3px; }
-  .chemical-quantity-field span { padding-left: 2px; }
+  .chemical-quantity-control { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .chemical-unit-label { margin-left: 2px; }
+  .chemical-unit-select { width: 100%; max-width: none; min-height: 36px; font-size: 12px; }
   .chemicals-quantity-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .chemicals-form-actions button { min-height: 44px; }
   .chemicals-history-card { margin-bottom: 8px; }

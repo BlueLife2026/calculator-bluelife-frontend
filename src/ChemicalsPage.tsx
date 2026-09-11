@@ -13,12 +13,14 @@ type QuantityKey =
   | 'saltBags'
   | 'phosphatesOunces';
 
-type ChemicalReportForm = Record<QuantityKey, string> & {
+type UnitKey = 'tabsUnit' | 'dePowderUnit' | 'stabilizerUnit';
+
+type ChemicalReportForm = Record<QuantityKey | UnitKey, string> & {
   serviceDate: string;
   technicianName: string;
 };
 
-type ChemicalReport = Record<QuantityKey, number | string> & {
+type ChemicalReport = Record<QuantityKey, number | string> & Record<UnitKey, string> & {
   id: string;
   serviceDate: string;
   technicianName: string;
@@ -45,16 +47,45 @@ const chemicalOwnerTokenKey = 'bluelife-chemicals-owner-token';
 const chemicalFields: Array<{
   key: QuantityKey;
   label: string;
-  unit: string;
+  unit?: string;
+  unitKey?: UnitKey;
+  unitOptions?: Array<{ value: string; label: string }>;
   shortLabel: string;
 }> = [
-  { key: 'tabsQuantity', label: 'Tabletas', unit: 'cantidad', shortLabel: 'Tabs' },
+  {
+    key: 'tabsQuantity',
+    label: 'Tabletas',
+    unitKey: 'tabsUnit',
+    unitOptions: [
+      { value: 'units', label: 'unidades' },
+      { value: 'pounds', label: 'libras' },
+    ],
+    shortLabel: 'Tabs',
+  },
   { key: 'liquidChlorineGallons', label: 'Cloro líquido', unit: 'galones', shortLabel: 'Cloro' },
   { key: 'muriaticAcidGallons', label: 'Ácido muriático', unit: 'galones', shortLabel: 'Ácido' },
   { key: 'shockScoops', label: 'Shock', unit: 'scoops', shortLabel: 'Shock' },
-  { key: 'dePowderBags', label: 'Polvo DE', unit: 'bolsas', shortLabel: 'DE' },
+  {
+    key: 'dePowderBags',
+    label: 'Polvo DE',
+    unitKey: 'dePowderUnit',
+    unitOptions: [
+      { value: 'bags', label: 'bolsas' },
+      { value: 'scoops', label: 'scoops' },
+    ],
+    shortLabel: 'DE',
+  },
   { key: 'bicarbonateScoops', label: 'Bicarbonato', unit: 'scoops', shortLabel: 'Bicarb.' },
-  { key: 'stabilizerScoops', label: 'Estabilizador', unit: 'scoops', shortLabel: 'Estab.' },
+  {
+    key: 'stabilizerScoops',
+    label: 'Estabilizador',
+    unitKey: 'stabilizerUnit',
+    unitOptions: [
+      { value: 'bags', label: 'bolsas' },
+      { value: 'scoops', label: 'scoops' },
+    ],
+    shortLabel: 'Estab.',
+  },
   { key: 'saltBags', label: 'Sal', unit: 'bolsas', shortLabel: 'Sal' },
   { key: 'phosphatesOunces', label: 'Fosfatos', unit: 'onzas', shortLabel: 'Fosfatos' },
 ];
@@ -70,12 +101,15 @@ function emptyForm(technicianName = ''): ChemicalReportForm {
     serviceDate: localDate(),
     technicianName,
     tabsQuantity: '',
+    tabsUnit: 'units',
     liquidChlorineGallons: '',
     muriaticAcidGallons: '',
     shockScoops: '',
     dePowderBags: '',
+    dePowderUnit: 'bags',
     bicarbonateScoops: '',
     stabilizerScoops: '',
+    stabilizerUnit: 'scoops',
     saltBags: '',
     phosphatesOunces: '',
   };
@@ -108,6 +142,21 @@ function formatReportDate(value: string) {
 
 function quantityLabel(value: number | string) {
   return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function selectedUnitLabel(
+  report: ChemicalReport,
+  chemical: (typeof chemicalFields)[number],
+) {
+  if (!chemical.unitKey || !chemical.unitOptions) return chemical.unit;
+  const fallbackUnit = {
+    tabsUnit: 'units',
+    dePowderUnit: 'bags',
+    stabilizerUnit: 'scoops',
+  }[chemical.unitKey];
+  return chemical.unitOptions.find(
+    ({ value }) => value === (report[chemical.unitKey!] || fallbackUnit),
+  )?.label ?? fallbackUnit;
 }
 
 export function ChemicalsPage({
@@ -241,6 +290,9 @@ export function ChemicalsPage({
           serviceDate: form.serviceDate,
           technicianName: form.technicianName.trim(),
           technicianToken: technicianToken || undefined,
+          tabsUnit: form.tabsUnit,
+          dePowderUnit: form.dePowderUnit,
+          stabilizerUnit: form.stabilizerUnit,
           ...quantities,
         }),
       });
@@ -286,7 +338,7 @@ export function ChemicalsPage({
         technicianToken?: string;
       } | null;
       if (!response.ok || !result?.name || !result.technicianToken) {
-        throw new Error('No encontramos un técnico con ese nombre.');
+        throw new Error('No encontramos ese nombre de acceso.');
       }
       setLockedTechnician(result.name);
       setTechnicianToken(result.technicianToken);
@@ -296,7 +348,7 @@ export function ChemicalsPage({
       setError(
         accessError instanceof Error
           ? accessError.message
-          : 'No se pudo validar el nombre.',
+          : 'No se pudo validar el nombre de acceso.',
       );
     } finally {
       setAccessing(false);
@@ -459,7 +511,7 @@ export function ChemicalsPage({
               <span>{isSharedForm && !lockedTechnician ? 'ACCESO DEL TÉCNICO' : 'NUEVO REGISTRO'}</span>
               <h2>Químicos</h2>
             </div>
-            <small>{isSharedForm && !lockedTechnician ? 'Usa tu nombre completo.' : 'Todos los campos con * son obligatorios.'}</small>
+            <small>{isSharedForm && !lockedTechnician ? 'Usa tu nombre de acceso.' : 'Todos los campos con * son obligatorios.'}</small>
           </div>
 
           {isSharedForm && !lockedTechnician ? (
@@ -467,18 +519,18 @@ export function ChemicalsPage({
               <div className="chemicals-access-intro">
                 <span aria-hidden="true">✓</span>
                 <div>
-                  <h3>Escribe tu nombre completo</h3>
-                  <p>No verás una lista de técnicos. Después de validarlo, tu nombre quedará bloqueado.</p>
+                  <h3>Escribe tu nombre de acceso</h3>
+                  <p>Usa el nombre numerado asignado. Después de validarlo, quedará bloqueado.</p>
                 </div>
               </div>
               <div className="form-field">
-                <label htmlFor="chemical-access-code">Nombre del técnico *</label>
+                <label htmlFor="chemical-access-code">Nombre de acceso del técnico *</label>
                 <input
                   id="chemical-access-code"
                   autoCapitalize="words"
                   autoComplete="name"
                   maxLength={120}
-                  placeholder="Ejemplo: Angel Viña"
+                  placeholder="Ejemplo: 01 Angel Viña"
                   required
                   value={accessCode}
                   onChange={(event) => setAccessCode(event.target.value)}
@@ -549,7 +601,7 @@ export function ChemicalsPage({
               {chemicalFields.map((chemical) => (
                 <div className="chemical-quantity-field" key={chemical.key}>
                   <label htmlFor={`chemical-${chemical.key}`}>{chemical.label}</label>
-                  <div>
+                  <div className="chemical-quantity-control">
                     <input
                       id={`chemical-${chemical.key}`}
                       type="number"
@@ -561,7 +613,25 @@ export function ChemicalsPage({
                       value={form[chemical.key]}
                       onChange={(event) => updateQuantity(chemical.key, event.target.value)}
                     />
-                    <span>{chemical.unit}</span>
+                    {chemical.unitKey && chemical.unitOptions ? (
+                      <select
+                        className="chemical-unit-select"
+                        aria-label={`Unidad de medida para ${chemical.label}`}
+                        value={form[chemical.unitKey]}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            [chemical.unitKey!]: event.target.value,
+                          }))
+                        }
+                      >
+                        {chemical.unitOptions.map((option) => (
+                          <option value={option.value} key={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="chemical-unit-label">{chemical.unit}</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -639,6 +709,7 @@ export function ChemicalsPage({
                         <span key={chemical.key}>
                           <strong>{quantityLabel(report[chemical.key])}</strong>
                           {chemical.shortLabel}
+                          {chemical.unitKey && ` · ${selectedUnitLabel(report, chemical)}`}
                         </span>
                       ))}
                     </div>
