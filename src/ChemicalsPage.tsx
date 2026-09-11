@@ -31,6 +31,11 @@ type ChemicalReport = Record<QuantityKey, number | string> & {
   createdAt: string;
 };
 
+type TechnicianDirectoryEntry = {
+  id: string;
+  name: string;
+};
+
 const chemicalFields: Array<{
   key: QuantityKey;
   label: string;
@@ -46,24 +51,6 @@ const chemicalFields: Array<{
   { key: 'stabilizerScoops', label: 'Estabilizador', unit: 'scoops', shortLabel: 'Estab.' },
   { key: 'saltBags', label: 'Sal', unit: 'bolsas', shortLabel: 'Sal' },
   { key: 'phosphatesOunces', label: 'Fosfatos', unit: 'onzas', shortLabel: 'Fosfatos' },
-];
-
-const technicians = [
-  'Adrian Suarez',
-  'Alexander Lara',
-  'Angel Hernandez',
-  'Angel Viña',
-  'Camilo Hidalgo',
-  'Camilo Leon',
-  'Diego Avila',
-  'Georky Quiñones',
-  'Guillermo Fernandez',
-  'Joisel Sagion Díaz',
-  'Jose Lugo',
-  'Mauricio Tami',
-  'Miguel Morales',
-  'Nelson Belauzaran',
-  'Reidel Blanco',
 ];
 
 function localDate() {
@@ -88,25 +75,17 @@ function emptyForm(technicianName = ''): ChemicalReportForm {
   };
 }
 
-function technicianFromSharedLink() {
-  const requestedTechnician = new URLSearchParams(window.location.search)
-    .get('technician')
-    ?.trim();
-  if (!requestedTechnician) return '';
-
-  return technicians.find(
-    (technician) => technician.localeCompare(requestedTechnician, undefined, {
-      sensitivity: 'base',
-    }) === 0,
-  ) ?? '';
+function technicianTokenFromSharedLink() {
+  return new URLSearchParams(window.location.search)
+    .get('technicianToken')
+    ?.trim() ?? '';
 }
 
-function sharedTechnicianUrl(technicianName: string) {
+function sharedTechnicianUrl() {
   const url = new URL(window.location.href);
   url.search = '';
   url.hash = '';
   url.searchParams.set('area', 'chemicals');
-  url.searchParams.set('technician', technicianName);
   return url.toString();
 }
 
@@ -125,34 +104,58 @@ export function ChemicalsPage({
 }: {
   sidebar: ReactNode;
 }) {
-  const [lockedTechnician] = useState(technicianFromSharedLink);
-  const [form, setForm] = useState<ChemicalReportForm>(() =>
-    emptyForm(lockedTechnician),
-  );
+  const [technicianToken] = useState(technicianTokenFromSharedLink);
+  const [lockedTechnician, setLockedTechnician] = useState('');
+  const [form, setForm] = useState<ChemicalReportForm>(emptyForm);
   const [reports, setReports] = useState<ChemicalReport[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
   const [shareTechnician, setShareTechnician] = useState('');
-  const isSharedForm = Boolean(lockedTechnician);
+  const isSharedForm = Boolean(technicianToken);
 
   useEffect(() => {
-    async function loadReports() {
+    async function loadChemicalWorkspace() {
+      if (isSharedForm) {
+        try {
+          const response = await fetch(
+            `${API_URL}/chemicals/technicians/resolve/${encodeURIComponent(technicianToken)}`,
+          );
+          if (!response.ok) throw new Error('El enlace del técnico no es válido.');
+          const technician = await response.json() as { name: string };
+          setLockedTechnician(technician.name);
+          setForm((current) => ({ ...current, technicianName: technician.name }));
+        } catch (loadError) {
+          console.error(loadError);
+          setError('Este enlace no es válido o ya no está activo.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        const response = await fetch(`${API_URL}/chemicals/reports`);
-        if (!response.ok) throw new Error('No se pudieron cargar los registros.');
-        setReports(await response.json());
+        const [reportsResponse, techniciansResponse] = await Promise.all([
+          fetch(`${API_URL}/chemicals/reports`),
+          fetch(`${API_URL}/chemicals/technicians`),
+        ]);
+        if (!reportsResponse.ok || !techniciansResponse.ok) {
+          throw new Error('No se pudo cargar el espacio de químicos.');
+        }
+        setReports(await reportsResponse.json());
+        setTechnicians(await techniciansResponse.json());
       } catch (loadError) {
         console.error(loadError);
-        setError('No se pudieron cargar los registros de químicos.');
+        setError('No se pudo cargar la información de químicos.');
       } finally {
         setLoading(false);
       }
     }
 
-    void loadReports();
-  }, []);
+    void loadChemicalWorkspace();
+  }, [isSharedForm, technicianToken]);
 
   const reportsToday = reports.filter(
     (report) => report.serviceDate.slice(0, 10) === localDate(),
@@ -191,6 +194,7 @@ export function ChemicalsPage({
         body: JSON.stringify({
           serviceDate: form.serviceDate,
           technicianName: form.technicianName.trim(),
+          technicianToken: technicianToken || undefined,
           ...quantities,
         }),
       });
@@ -222,11 +226,10 @@ export function ChemicalsPage({
   }
 
   function shareOnWhatsApp() {
-    if (!shareTechnician) return;
-    const firstName = shareTechnician.split(' ')[0];
-    const message = `Hola ${firstName}, registra aquí las cantidades de químicos que retiraste de bodega: ${sharedTechnicianUrl(shareTechnician)}`;
+    const technician = technicians.find((item) => item.id === shareTechnician);
+    if (!technician) return;
     const whatsappWindow = window.open(
-      `https://wa.me/?text=${encodeURIComponent(message)}`,
+      `${API_URL}/chemicals/technicians/${encodeURIComponent(technician.id)}/whatsapp?formUrl=${encodeURIComponent(sharedTechnicianUrl())}`,
       '_blank',
       'noopener,noreferrer',
     );
@@ -304,7 +307,7 @@ export function ChemicalsPage({
               >
                 <option value="">Seleccionar técnico</option>
                 {technicians.map((technician) => (
-                  <option value={technician} key={technician}>{technician}</option>
+                  <option value={technician.id} key={technician.id}>{technician.name}</option>
                 ))}
               </select>
               <button
@@ -343,15 +346,15 @@ export function ChemicalsPage({
               </div>
               <div className="form-field">
                 <label htmlFor="chemical-technician">Técnico *</label>
-                {lockedTechnician ? (
+                {isSharedForm ? (
                   <>
                     <input
                       className="chemicals-locked-technician"
                       id="chemical-technician"
                       readOnly
-                      value={form.technicianName}
+                      value={loading ? 'Validando enlace...' : form.technicianName}
                     />
-                    <small className="chemicals-locked-note">Asignado por el enlace · no se puede cambiar</small>
+                    <small className="chemicals-locked-note">Identificado por enlace único · no se puede cambiar</small>
                   </>
                 ) : (
                   <select
@@ -364,7 +367,7 @@ export function ChemicalsPage({
                   >
                     <option value="">Seleccionar técnico</option>
                     {technicians.map((technician) => (
-                      <option value={technician} key={technician}>{technician}</option>
+                      <option value={technician.name} key={technician.name}>{technician.name}</option>
                     ))}
                   </select>
                 )}
@@ -416,7 +419,7 @@ export function ChemicalsPage({
               <button
                 className="primary-button"
                 type="submit"
-                disabled={saving || !form.serviceDate || !form.technicianName.trim()}
+                disabled={saving || loading || !form.serviceDate || !form.technicianName.trim()}
               >
                 {saving ? 'Guardando...' : 'Guardar registro'}
               </button>
