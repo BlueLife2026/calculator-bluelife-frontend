@@ -309,25 +309,7 @@ export function ChemicalsPage({
         <>
           <nav className="chemicals-tabs" aria-label="Módulos de químicos">
             <button className="chemicals-tab-active" type="button">Registro</button>
-            <button type="button" disabled>Validación</button>
-            <button type="button" disabled>Bodega</button>
-            <button type="button" disabled>Skimmer</button>
           </nav>
-
-          <section className="chemicals-validation-flow" aria-label="Flujo de validación">
-            <article className="chemicals-source-active">
-              <span>01</span>
-              <div><strong>Retiro reportado</strong><small>Formulario del técnico</small></div>
-            </article>
-            <article>
-              <span>02</span>
-              <div><strong>Salida de bodega</strong><small>Próxima conexión</small></div>
-            </article>
-            <article>
-              <span>03</span>
-              <div><strong>Uso en Skimmer</strong><small>Próxima conexión</small></div>
-            </article>
-          </section>
 
           <section className="chemicals-kpis">
             <article><span>Registros de hoy</span><strong>{reportsToday}</strong><small>Retiros informados por el equipo</small></article>
