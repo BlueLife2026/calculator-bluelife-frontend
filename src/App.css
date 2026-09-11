@@ -1249,30 +1249,13 @@ tbody tr:hover {
   text-overflow: ellipsis;
 }
 
-.proposal-pool-scale {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin-top: 12px;
-}
-
-.proposal-pool-scale strong {
-  color: #0873aa;
-  font-size: 11px;
-}
-
-.proposal-pool-scale span {
-  color: #7b909b;
-  font-size: 9px;
-}
-
 .proposal-pool-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
 }
 
-.proposal-pool-controls button {
+.proposal-pool-option {
   display: grid;
   min-width: 0;
   grid-template-columns: 9px minmax(0, 1fr) auto;
@@ -1283,72 +1266,66 @@ tbody tr:hover {
   padding: 12px;
   background: rgba(255, 255, 255, 0.82);
   color: #344054;
-  cursor: pointer;
   text-align: left;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.proposal-pool-controls button:hover {
-  border-color: #8acbe5;
-  box-shadow: 0 8px 18px rgba(0, 101, 143, 0.09);
-  transform: translateY(-1px);
-}
-
-.proposal-pool-controls button.proposal-pool-option-active {
+.proposal-pool-option-capacity {
   border-color: #2ea3f2;
   background: #f2faff;
-  box-shadow: 0 0 0 2px rgba(46, 163, 242, 0.12), 0 9px 20px rgba(0, 101, 143, 0.1);
+  box-shadow: 0 0 0 2px rgba(46, 163, 242, 0.1);
 }
 
-.proposal-pool-controls button > i {
+.proposal-pool-option-water {
+  border-color: #62c58c;
+  background: #f2fbf5;
+  box-shadow: 0 0 0 2px rgba(26, 156, 82, 0.1);
+}
+
+.proposal-pool-option > i {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: #64748b;
 }
 
-.proposal-pool-controls button > span {
+.proposal-pool-option > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
-.proposal-pool-controls button strong {
+.proposal-pool-option strong {
   overflow: hidden;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.proposal-pool-controls button small {
+.proposal-pool-option small {
   color: #98a2b3;
   font-size: 8px;
 }
 
-.proposal-pool-controls button b {
+.proposal-pool-option b {
   color: #163b50;
   font-size: 11px;
   white-space: nowrap;
 }
 
-.proposal-pool-controls button.status-pipeline > i {
-  background: linear-gradient(135deg, #2ea3f2 50%, #1a9c52 50%);
-}
-
-.proposal-pool-controls button.status-sent > i {
+.proposal-pool-option.status-sent > i {
   background: #0c71c3;
 }
 
-.proposal-pool-controls button.status-approved > i {
+.proposal-pool-option.status-approved > i {
   background: #1a9c52;
 }
 
-.proposal-pool-controls button.status-rejected > i {
+.proposal-pool-option.status-rejected > i {
   background: #e25555;
 }
 
-.proposal-pool-controls button.status-expired > i {
+.proposal-pool-option.status-expired > i {
   background: #e7a622;
 }
 
@@ -4466,7 +4443,7 @@ tbody tr:hover,
   }
 
   .proposal-pool-water,
-  .proposal-pool-controls button {
+  .proposal-pool-option {
     transition: none;
   }
 }
