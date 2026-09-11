@@ -287,10 +287,6 @@ export function ChemicalsPage({
         <div>
           <span className="area-eyebrow">CONTROL OPERATIVO</span>
           <h1>Químicos</h1>
-          <p>
-            Registra las cantidades que cada técnico retira de bodega para
-            compararlas después con el inventario y Skimmer.
-          </p>
         </div>
         {!isSharedForm && (
           <div className="area-header-actions">
@@ -383,15 +379,17 @@ export function ChemicalsPage({
             <div className="chemicals-context-grid">
               <div className="form-field">
                 <label htmlFor="chemical-date">Fecha del reporte *</label>
-                <input
-                  id="chemical-date"
-                  type="date"
-                  required
-                  value={form.serviceDate}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, serviceDate: event.target.value }))
-                  }
-                />
+                <div className="chemical-date-control">
+                  <input
+                    id="chemical-date"
+                    type="date"
+                    required
+                    value={form.serviceDate}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, serviceDate: event.target.value }))
+                    }
+                  />
+                </div>
               </div>
               <div className="form-field">
                 <label htmlFor="chemical-technician">Técnico *</label>
