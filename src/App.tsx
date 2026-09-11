@@ -621,6 +621,15 @@ function WaterBodiesEditor({
   );
 }
 
+function formatDashboardCurrency(value: number) {
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 function proposalStatusLabel(status: SalesActivityStatus) {
   return status === 'SENT' ? 'Sent - No Response' : formatLabel(status);
 }
@@ -1000,20 +1009,34 @@ function App() {
       counts[company] = (counts[company] ?? 0) + 1;
       return counts;
     }, {});
-    const proposalCounts = filteredProperties.reduce<Record<string, number>>((counts, property) => {
+    const proposalCounts: Record<string, number> = {};
+    const proposalValues: Record<string, number> = {};
+    filteredProperties.forEach((property) => {
       property.salesActivities
         .filter((activity) => activity.type === 'PROPOSAL')
         .forEach((activity) => {
           const status = activity.status ?? 'CREATED';
-          counts[status] = (counts[status] ?? 0) + 1;
+          const monthlyValue = Math.max(
+            0,
+            Number(activity.proposalData?.totalMonthlyInvestment) || 0,
+          );
+          proposalCounts[status] = (proposalCounts[status] ?? 0) + 1;
+          proposalValues[status] = (proposalValues[status] ?? 0) + monthlyValue;
         });
-      return counts;
-    }, {});
+    });
+    const totalProposalValue = Object.values(proposalValues)
+      .reduce((sum, value) => sum + value, 0);
     return {
       typeCounts,
       managementCounts,
       proposalCounts,
+      proposalValues,
       totalProposals: Object.values(proposalCounts).reduce((sum, count) => sum + count, 0),
+      totalProposalValue,
+      activeProposalValue:
+        (proposalValues.CREATED ?? 0) + (proposalValues.SENT ?? 0),
+      approvedProposalValue: proposalValues.APPROVED ?? 0,
+      maximumProposalValue: Math.max(...Object.values(proposalValues), 1),
       propertyCount: filteredProperties.length,
       clientCount: filteredProperties.filter(
         (property) => property.lifecycleStatus === 'CLIENT',
@@ -4780,9 +4803,10 @@ function App() {
             <span>Management companies</span>
             <strong>{Object.keys(dashboardStats.managementCounts).filter((name) => name !== 'Unassigned').length}</strong>
           </div>
-          <div className="dashboard-kpi">
+          <div className="dashboard-kpi dashboard-kpi-proposals">
             <span>Total proposals</span>
             <strong>{dashboardStats.totalProposals}</strong>
+            <small>{formatDashboardCurrency(dashboardStats.totalProposalValue)} monthly value</small>
           </div>
           <div className="dashboard-kpi">
             <span>Clients</span>
@@ -4841,15 +4865,64 @@ function App() {
             </div>
           </div>
 
-          <div className="dashboard-chart-card proposal-status-chart">
-            <h3>Proposals by status</h3>
-            <div className="status-summary-list">
-              {proposalBoardStatuses.map((status) => (
-                <div key={status}>
-                  <span className={`proposal-status status-${status.toLowerCase()}`}>{proposalStatusLabel(status)}</span>
-                  <strong>{dashboardStats.proposalCounts[status] ?? 0}</strong>
-                </div>
-              ))}
+          <div className="dashboard-chart-card proposal-value-chart">
+            <div className="proposal-value-heading">
+              <div>
+                <span>MONTHLY VALUE</span>
+                <h3>Proposal pipeline by status</h3>
+                <p>Quantity and monthly investment represented in each stage.</p>
+              </div>
+              <div className="proposal-value-grand-total">
+                <span>All proposals</span>
+                <strong>{formatDashboardCurrency(dashboardStats.totalProposalValue)}</strong>
+                <small>per month</small>
+              </div>
+            </div>
+
+            <div className="proposal-value-highlights">
+              <article>
+                <span>Active pipeline</span>
+                <strong>{formatDashboardCurrency(dashboardStats.activeProposalValue)}</strong>
+                <small>Created + sent</small>
+              </article>
+              <article>
+                <span>Approved monthly</span>
+                <strong>{formatDashboardCurrency(dashboardStats.approvedProposalValue)}</strong>
+                <small>Converted proposal value</small>
+              </article>
+              <article>
+                <span>Average proposal</span>
+                <strong>
+                  {formatDashboardCurrency(
+                    dashboardStats.totalProposals
+                      ? dashboardStats.totalProposalValue / dashboardStats.totalProposals
+                      : 0,
+                  )}
+                </strong>
+                <small>Across the current search</small>
+              </article>
+            </div>
+
+            <div className="proposal-value-bars">
+              {proposalBoardStatuses.map((status) => {
+                const count = dashboardStats.proposalCounts[status] ?? 0;
+                const value = dashboardStats.proposalValues[status] ?? 0;
+                return (
+                  <div className={`proposal-value-row status-${status.toLowerCase()}`} key={status}>
+                    <div className="proposal-value-label">
+                      <i />
+                      <span>
+                        <strong>{proposalStatusLabel(status)}</strong>
+                        <small>{count} {count === 1 ? 'proposal' : 'proposals'}</small>
+                      </span>
+                    </div>
+                    <div className="proposal-value-track" aria-hidden="true">
+                      <i style={{ width: `${(value / dashboardStats.maximumProposalValue) * 100}%` }} />
+                    </div>
+                    <strong className="proposal-value-amount">{formatDashboardCurrency(value)}</strong>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

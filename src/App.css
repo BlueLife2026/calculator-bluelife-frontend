@@ -697,10 +697,25 @@ tbody tr:hover {
   font-size: 28px;
 }
 
+.dashboard-kpi small {
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.dashboard-kpi-proposals {
+  border-color: #b9ddf1;
+  background: linear-gradient(145deg, #f2faff, #edf8f4);
+}
+
+.dashboard-kpi-proposals small {
+  color: #0873aa;
+  font-weight: 700;
+}
+
 .dashboard-charts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .proposal-reminder-center {
@@ -1023,6 +1038,183 @@ tbody tr:hover {
 
 .status-summary-list > div {
   justify-content: space-between;
+}
+
+.proposal-value-chart {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  padding: 22px;
+  border-color: #cfe5f0;
+  background:
+    radial-gradient(circle at 100% 0, rgba(46, 163, 242, 0.12), transparent 34%),
+    linear-gradient(145deg, #ffffff, #f8fcfe);
+}
+
+.proposal-value-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.proposal-value-heading > div:first-child > span {
+  color: #0873aa;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.proposal-value-heading h3 {
+  margin: 4px 0 5px;
+  color: var(--bluelife-navy);
+  font-size: 19px;
+}
+
+.proposal-value-heading p {
+  margin: 0;
+  color: #667085;
+  font-size: 11px;
+}
+
+.proposal-value-grand-total {
+  display: flex;
+  min-width: 150px;
+  align-items: flex-end;
+  flex-direction: column;
+}
+
+.proposal-value-grand-total span,
+.proposal-value-grand-total small {
+  color: #667085;
+  font-size: 9px;
+}
+
+.proposal-value-grand-total strong {
+  margin: 2px 0;
+  color: #00658f;
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+.proposal-value-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 20px;
+}
+
+.proposal-value-highlights article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #deebf1;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.proposal-value-highlights span,
+.proposal-value-highlights small {
+  color: #7b909b;
+  font-size: 9px;
+}
+
+.proposal-value-highlights strong {
+  overflow: hidden;
+  color: #163b50;
+  font-size: 17px;
+  text-overflow: ellipsis;
+}
+
+.proposal-value-bars {
+  display: grid;
+  gap: 13px;
+}
+
+.proposal-value-row {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.8fr) minmax(180px, 2fr) minmax(78px, auto);
+  align-items: center;
+  gap: 14px;
+}
+
+.proposal-value-label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.proposal-value-label > i {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.proposal-value-label > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proposal-value-label strong {
+  overflow: hidden;
+  color: #344054;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proposal-value-label small {
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+.proposal-value-track {
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf0f3;
+}
+
+.proposal-value-track > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #64748b;
+  transition: width 240ms ease;
+}
+
+.proposal-value-amount {
+  color: #344054;
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.proposal-value-row.status-sent .proposal-value-label > i,
+.proposal-value-row.status-sent .proposal-value-track > i {
+  background: #0c71c3;
+}
+
+.proposal-value-row.status-approved .proposal-value-label > i,
+.proposal-value-row.status-approved .proposal-value-track > i {
+  background: #1a9c52;
+}
+
+.proposal-value-row.status-rejected .proposal-value-label > i,
+.proposal-value-row.status-rejected .proposal-value-track > i {
+  background: #e25555;
+}
+
+.proposal-value-row.status-expired .proposal-value-label > i,
+.proposal-value-row.status-expired .proposal-value-track > i {
+  background: #e7a622;
 }
 
 .proposal-modal > .edit-panel-header,
@@ -4068,6 +4260,21 @@ tbody tr:hover,
   .proposal-status-chart {
     grid-column: auto;
   }
+
+  .proposal-value-heading {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .proposal-value-grand-total {
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .proposal-value-row {
+    grid-template-columns: minmax(125px, 0.9fr) minmax(100px, 1.2fr) minmax(72px, auto);
+    gap: 9px;
+  }
 }
 
 @container property-insights (max-width: 420px) {
@@ -4091,5 +4298,24 @@ tbody tr:hover,
 
   .bar-row {
     grid-template-columns: minmax(72px, 1fr) 1.25fr 24px;
+  }
+
+  .proposal-value-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-value-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+  }
+
+  .proposal-value-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .proposal-value-amount {
+    grid-column: 2;
+    grid-row: 1;
   }
 }
