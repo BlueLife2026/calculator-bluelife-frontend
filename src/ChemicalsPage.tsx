@@ -133,10 +133,11 @@ export function ChemicalsPage({
   );
   const [owner, setOwner] = useState<ChemicalOwner | null>(null);
   const [showOwnerAccess, setShowOwnerAccess] = useState(false);
-  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('ximena.velosa@bluelifepools.com');
   const [ownerPassword, setOwnerPassword] = useState('');
   const [ownerAccessing, setOwnerAccessing] = useState(false);
   const [deletingReportId, setDeletingReportId] = useState('');
+  const [reportPendingDeletion, setReportPendingDeletion] = useState<ChemicalReport | null>(null);
   const isSharedForm = technicianAccessMode || Boolean(initialTechnicianToken);
 
   useEffect(() => {
@@ -327,6 +328,11 @@ export function ChemicalsPage({
       setOwner(result.owner);
       setOwnerPassword('');
       setShowOwnerAccess(false);
+      const pendingReport = reportPendingDeletion;
+      setReportPendingDeletion(null);
+      if (pendingReport) {
+        await removeReport(pendingReport, result.owner, result.token);
+      }
     } catch (ownerAccessError) {
       window.alert(
         ownerAccessError instanceof Error
@@ -350,8 +356,21 @@ export function ChemicalsPage({
     setOwner(null);
   }
 
-  async function removeReport(report: ChemicalReport) {
-    if (!owner || !ownerToken) return;
+  function requestRemoveReport(report: ChemicalReport) {
+    if (!owner || !ownerToken) {
+      setReportPendingDeletion(report);
+      setShowOwnerAccess(true);
+      return;
+    }
+    void removeReport(report);
+  }
+
+  async function removeReport(
+    report: ChemicalReport,
+    activeOwner = owner,
+    activeOwnerToken = ownerToken,
+  ) {
+    if (!activeOwner || !activeOwnerToken) return;
     const confirmed = window.confirm(
       `¿Eliminar el registro de ${report.technicianName} del ${formatReportDate(report.serviceDate)}?`,
     );
@@ -361,7 +380,7 @@ export function ChemicalsPage({
       setDeletingReportId(report.id);
       const response = await fetch(`${API_URL}/chemicals/reports/${report.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${ownerToken}` },
+        headers: { Authorization: `Bearer ${activeOwnerToken}` },
       });
       if (response.status === 401) {
         await logoutOwner();
@@ -614,17 +633,15 @@ export function ChemicalsPage({
                         <strong>{report.technicianName}</strong>
                         <small>{report.propertyName || 'Retiro de bodega'}</small>
                       </div>
-                      {owner && (
-                        <button
-                          className="chemical-report-delete"
-                          type="button"
-                          disabled={deletingReportId === report.id}
-                          aria-label={`Eliminar registro de ${report.technicianName}`}
-                          onClick={() => void removeReport(report)}
-                        >
-                          {deletingReportId === report.id ? 'Eliminando…' : 'Eliminar'}
-                        </button>
-                      )}
+                      <button
+                        className="chemical-report-delete"
+                        type="button"
+                        disabled={deletingReportId === report.id}
+                        aria-label={`Eliminar registro de ${report.technicianName}`}
+                        onClick={() => requestRemoveReport(report)}
+                      >
+                        {deletingReportId === report.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
                     </div>
                     <dl>
                       <div><dt>Fecha</dt><dd>{formatReportDate(report.serviceDate)}</dd></div>
@@ -656,7 +673,14 @@ export function ChemicalsPage({
       )}
 
       {!isSharedForm && showOwnerAccess && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowOwnerAccess(false)}>
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={() => {
+            setShowOwnerAccess(false);
+            setReportPendingDeletion(null);
+          }}
+        >
           <section
             className="chemicals-owner-modal"
             role="dialog"
@@ -669,9 +693,20 @@ export function ChemicalsPage({
                 <span>ACCESO PRIVADO</span>
                 <h2 id="chemicals-owner-title">Mi perfil</h2>
               </div>
-              <button type="button" aria-label="Cerrar" onClick={() => setShowOwnerAccess(false)}>×</button>
+              <button
+                type="button"
+                aria-label="Cerrar"
+                onClick={() => {
+                  setShowOwnerAccess(false);
+                  setReportPendingDeletion(null);
+                }}
+              >×</button>
             </div>
-            <p>Solo la propietaria puede habilitar la eliminación de registros.</p>
+            <p>
+              {reportPendingDeletion
+                ? 'Inicia sesión para confirmar la eliminación de este registro.'
+                : 'Solo la propietaria puede habilitar la eliminación de registros.'}
+            </p>
             <form onSubmit={accessOwner}>
               <div className="form-field">
                 <label htmlFor="chemical-owner-email">Correo *</label>
@@ -690,7 +725,7 @@ export function ChemicalsPage({
                   id="chemical-owner-password"
                   type="password"
                   autoComplete="current-password"
-                  minLength={12}
+                  minLength={8}
                   required
                   value={ownerPassword}
                   onChange={(event) => setOwnerPassword(event.target.value)}
