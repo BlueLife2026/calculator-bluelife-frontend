@@ -35,6 +35,13 @@ type TechnicianDirectoryEntry = {
   name: string;
 };
 
+type ChemicalOwner = {
+  name: string;
+  email: string;
+};
+
+const chemicalOwnerTokenKey = 'bluelife-chemicals-owner-token';
+
 const chemicalFields: Array<{
   key: QuantityKey;
   label: string;
@@ -121,6 +128,15 @@ export function ChemicalsPage({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
+  const [ownerToken, setOwnerToken] = useState(
+    () => window.localStorage.getItem(chemicalOwnerTokenKey) ?? '',
+  );
+  const [owner, setOwner] = useState<ChemicalOwner | null>(null);
+  const [showOwnerAccess, setShowOwnerAccess] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerAccessing, setOwnerAccessing] = useState(false);
+  const [deletingReportId, setDeletingReportId] = useState('');
   const isSharedForm = technicianAccessMode || Boolean(initialTechnicianToken);
 
   useEffect(() => {
@@ -167,6 +183,27 @@ export function ChemicalsPage({
 
     void loadChemicalWorkspace();
   }, [initialTechnicianToken, isSharedForm]);
+
+  useEffect(() => {
+    if (isSharedForm || !ownerToken) return;
+
+    async function verifyOwnerSession() {
+      try {
+        const response = await fetch(`${API_URL}/chemicals/owner/session`, {
+          headers: { Authorization: `Bearer ${ownerToken}` },
+        });
+        if (!response.ok) throw new Error('Owner session expired.');
+        const activeOwner = await response.json() as ChemicalOwner;
+        setOwner(activeOwner);
+      } catch {
+        window.localStorage.removeItem(chemicalOwnerTokenKey);
+        setOwnerToken('');
+        setOwner(null);
+      }
+    }
+
+    void verifyOwnerSession();
+  }, [isSharedForm, ownerToken]);
 
   const reportsToday = reports.filter(
     (report) => report.serviceDate.slice(0, 10) === localDate(),
@@ -265,6 +302,84 @@ export function ChemicalsPage({
     }
   }
 
+  async function accessOwner(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      setOwnerAccessing(true);
+      const response = await fetch(`${API_URL}/chemicals/owner/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: ownerEmail.trim(),
+          password: ownerPassword,
+        }),
+      });
+      const result = await response.json().catch(() => null) as {
+        token?: string;
+        owner?: ChemicalOwner;
+      } | null;
+      if (!response.ok || !result?.token || !result.owner) {
+        throw new Error('El correo o la clave no son correctos.');
+      }
+
+      window.localStorage.setItem(chemicalOwnerTokenKey, result.token);
+      setOwnerToken(result.token);
+      setOwner(result.owner);
+      setOwnerPassword('');
+      setShowOwnerAccess(false);
+    } catch (ownerAccessError) {
+      window.alert(
+        ownerAccessError instanceof Error
+          ? ownerAccessError.message
+          : 'No fue posible acceder al perfil.',
+      );
+    } finally {
+      setOwnerAccessing(false);
+    }
+  }
+
+  async function logoutOwner() {
+    if (ownerToken) {
+      await fetch(`${API_URL}/chemicals/owner/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      }).catch(() => undefined);
+    }
+    window.localStorage.removeItem(chemicalOwnerTokenKey);
+    setOwnerToken('');
+    setOwner(null);
+  }
+
+  async function removeReport(report: ChemicalReport) {
+    if (!owner || !ownerToken) return;
+    const confirmed = window.confirm(
+      `¿Eliminar el registro de ${report.technicianName} del ${formatReportDate(report.serviceDate)}?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingReportId(report.id);
+      const response = await fetch(`${API_URL}/chemicals/reports/${report.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      if (response.status === 401) {
+        await logoutOwner();
+        throw new Error('Tu sesión venció. Vuelve a ingresar desde Mi perfil.');
+      }
+      if (!response.ok) throw new Error('No se pudo eliminar el registro.');
+      setReports((current) => current.filter((item) => item.id !== report.id));
+    } catch (removeError) {
+      window.alert(
+        removeError instanceof Error
+          ? removeError.message
+          : 'No se pudo eliminar el registro.',
+      );
+    } finally {
+      setDeletingReportId('');
+    }
+  }
+
   function shareOnWhatsApp() {
     const message = `Hola, usa este enlace para reportar las cantidades de químicos retiradas de bodega: ${sharedTechnicianAccessUrl()}`;
     const whatsappWindow = window.open(
@@ -284,6 +399,19 @@ export function ChemicalsPage({
           <div>
             <span className="area-eyebrow">CONTROL OPERATIVO</span>
             <h1>Químicos</h1>
+          </div>
+          <div className="chemicals-owner-control">
+            {owner ? (
+              <>
+                <span className="chemicals-owner-badge" aria-label="Perfil de propietaria activo">
+                  <i>{owner.name.slice(0, 1).toUpperCase()}</i>
+                  <span><strong>{owner.name}</strong><small>Propietaria</small></span>
+                </span>
+                <button type="button" onClick={() => void logoutOwner()}>Cerrar sesión</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setShowOwnerAccess(true)}>Mi perfil</button>
+            )}
           </div>
         </header>
       )}
@@ -486,6 +614,17 @@ export function ChemicalsPage({
                         <strong>{report.technicianName}</strong>
                         <small>{report.propertyName || 'Retiro de bodega'}</small>
                       </div>
+                      {owner && (
+                        <button
+                          className="chemical-report-delete"
+                          type="button"
+                          disabled={deletingReportId === report.id}
+                          aria-label={`Eliminar registro de ${report.technicianName}`}
+                          onClick={() => void removeReport(report)}
+                        >
+                          {deletingReportId === report.id ? 'Eliminando…' : 'Eliminar'}
+                        </button>
+                      )}
                     </div>
                     <dl>
                       <div><dt>Fecha</dt><dd>{formatReportDate(report.serviceDate)}</dd></div>
@@ -514,6 +653,55 @@ export function ChemicalsPage({
             Descargar registros para Excel
           </a>
         </footer>
+      )}
+
+      {!isSharedForm && showOwnerAccess && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowOwnerAccess(false)}>
+          <section
+            className="chemicals-owner-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chemicals-owner-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="chemicals-owner-modal-heading">
+              <div>
+                <span>ACCESO PRIVADO</span>
+                <h2 id="chemicals-owner-title">Mi perfil</h2>
+              </div>
+              <button type="button" aria-label="Cerrar" onClick={() => setShowOwnerAccess(false)}>×</button>
+            </div>
+            <p>Solo la propietaria puede habilitar la eliminación de registros.</p>
+            <form onSubmit={accessOwner}>
+              <div className="form-field">
+                <label htmlFor="chemical-owner-email">Correo *</label>
+                <input
+                  id="chemical-owner-email"
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={ownerEmail}
+                  onChange={(event) => setOwnerEmail(event.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="chemical-owner-password">Clave *</label>
+                <input
+                  id="chemical-owner-password"
+                  type="password"
+                  autoComplete="current-password"
+                  minLength={12}
+                  required
+                  value={ownerPassword}
+                  onChange={(event) => setOwnerPassword(event.target.value)}
+                />
+              </div>
+              <button className="primary-button" type="submit" disabled={ownerAccessing}>
+                {ownerAccessing ? 'Ingresando…' : 'Ingresar'}
+              </button>
+            </form>
+          </section>
+        </div>
       )}
     </div>
   );

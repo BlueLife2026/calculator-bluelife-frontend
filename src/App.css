@@ -2534,6 +2534,67 @@ tbody tr:hover {
   text-decoration: underline;
 }
 
+.chemicals-owner-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chemicals-owner-control > button,
+.chemical-report-delete {
+  border: 0;
+  padding: 5px 0;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.chemicals-owner-control > button:hover {
+  color: var(--bluelife-blue-dark);
+  text-decoration: underline;
+}
+
+.chemicals-owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8eee0;
+  border-radius: 999px;
+  padding: 5px 10px 5px 5px;
+  background: #f5fcf7;
+}
+
+.chemicals-owner-badge > i {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 50%;
+  background: #16804a;
+  color: white;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.chemicals-owner-badge > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chemicals-owner-badge strong {
+  color: #344054;
+  font-size: 10px;
+}
+
+.chemicals-owner-badge small {
+  color: #16804a;
+  font-size: 8px;
+}
+
 .chemicals-tabs {
   display: flex;
   gap: 4px;
@@ -3044,6 +3105,81 @@ tbody tr:hover {
   font-weight: 800;
 }
 
+.chemical-report-delete {
+  flex: 0 0 auto;
+  color: #b42318;
+}
+
+.chemical-report-delete:hover {
+  text-decoration: underline;
+}
+
+.chemical-report-delete:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.chemicals-owner-modal {
+  width: min(410px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--bluelife-border);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(15, 42, 58, 0.24);
+}
+
+.chemicals-owner-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 15px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.chemicals-owner-modal-heading span {
+  color: #16804a;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.chemicals-owner-modal-heading h2 {
+  margin: 3px 0 0;
+  color: var(--bluelife-navy);
+  font-size: 19px;
+}
+
+.chemicals-owner-modal-heading button {
+  border: 0;
+  padding: 0 3px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.chemicals-owner-modal > p {
+  margin: 0;
+  padding: 16px 20px 0;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.chemicals-owner-modal form {
+  display: grid;
+  gap: 14px;
+  padding: 16px 20px 20px;
+}
+
+.chemicals-owner-modal form > button {
+  width: 100%;
+  min-height: 43px;
+  margin-top: 2px;
+}
+
 .chemicals-report-list dl {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3163,6 +3299,7 @@ tbody tr:hover {
   .chemicals-page-header p { margin-top: 5px; font-size: 13px; line-height: 1.45; }
   .chemicals-page-header .area-header-actions { gap: 8px; }
   .chemicals-page-header .integration-pill { min-height: 42px; box-sizing: border-box; }
+  .chemicals-owner-control { width: 100%; justify-content: space-between; }
   .chemicals-tabs { width: 100%; margin: -2px 0 13px; }
   .chemicals-tabs button { min-width: 0; flex: 1 1 25%; padding: 10px 4px 9px; font-size: 10px; }
   .chemicals-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
