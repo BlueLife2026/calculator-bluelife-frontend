@@ -359,7 +359,7 @@ export function ChemicalsPage({
           <div className="chemicals-card-heading">
             <div>
               <span>{isSharedForm && !lockedTechnician ? 'ACCESO DEL TÉCNICO' : 'NUEVO REGISTRO'}</span>
-              <h2>{isSharedForm && !lockedTechnician ? 'Identifícate para continuar' : 'Retiro de químicos de bodega'}</h2>
+              <h2>Químicos</h2>
             </div>
             <small>{isSharedForm && !lockedTechnician ? 'Usa tu nombre completo.' : 'Todos los campos con * son obligatorios.'}</small>
           </div>
