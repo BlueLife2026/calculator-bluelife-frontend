@@ -2518,29 +2518,29 @@ tbody tr:hover {
 .chemicals-page-tools {
   display: flex;
   justify-content: flex-end;
+  gap: 14px;
   margin-top: 18px;
   padding-top: 12px;
   border-top: 1px solid #e4edf1;
 }
 
-.chemicals-page-tools a {
+.chemicals-page-tools a,
+.chemicals-page-tools button {
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: #667085;
+  cursor: pointer;
   font-size: 10px;
   text-decoration: none;
 }
 
-.chemicals-page-tools a:hover {
+.chemicals-page-tools a:hover,
+.chemicals-page-tools button:hover {
   color: var(--bluelife-blue-dark);
   text-decoration: underline;
 }
 
-.chemicals-owner-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chemicals-owner-control > button,
 .chemical-report-delete {
   border: 0;
   padding: 5px 0;
@@ -2549,50 +2549,6 @@ tbody tr:hover {
   cursor: pointer;
   font-size: 10px;
   font-weight: 750;
-}
-
-.chemicals-owner-control > button:hover {
-  color: var(--bluelife-blue-dark);
-  text-decoration: underline;
-}
-
-.chemicals-owner-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid #d8eee0;
-  border-radius: 999px;
-  padding: 5px 10px 5px 5px;
-  background: #f5fcf7;
-}
-
-.chemicals-owner-badge > i {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border-radius: 50%;
-  background: #16804a;
-  color: white;
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 850;
-}
-
-.chemicals-owner-badge > span {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.chemicals-owner-badge strong {
-  color: #344054;
-  font-size: 10px;
-}
-
-.chemicals-owner-badge small {
-  color: #16804a;
-  font-size: 8px;
 }
 
 .chemicals-tabs {
@@ -3299,7 +3255,6 @@ tbody tr:hover {
   .chemicals-page-header p { margin-top: 5px; font-size: 13px; line-height: 1.45; }
   .chemicals-page-header .area-header-actions { gap: 8px; }
   .chemicals-page-header .integration-pill { min-height: 42px; box-sizing: border-box; }
-  .chemicals-owner-control { width: 100%; justify-content: space-between; }
   .chemicals-tabs { width: 100%; margin: -2px 0 13px; }
   .chemicals-tabs button { min-width: 0; flex: 1 1 25%; padding: 10px 4px 9px; font-size: 10px; }
   .chemicals-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }

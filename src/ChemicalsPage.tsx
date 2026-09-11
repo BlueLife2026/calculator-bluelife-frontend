@@ -384,7 +384,7 @@ export function ChemicalsPage({
       });
       if (response.status === 401) {
         await logoutOwner();
-        throw new Error('Tu sesión venció. Vuelve a ingresar desde Mi perfil.');
+        throw new Error('Tu sesión venció. Presiona Eliminar para volver a ingresar.');
       }
       if (!response.ok) throw new Error('No se pudo eliminar el registro.');
       setReports((current) => current.filter((item) => item.id !== report.id));
@@ -418,19 +418,6 @@ export function ChemicalsPage({
           <div>
             <span className="area-eyebrow">CONTROL OPERATIVO</span>
             <h1>Químicos</h1>
-          </div>
-          <div className="chemicals-owner-control">
-            {owner ? (
-              <>
-                <span className="chemicals-owner-badge" aria-label="Perfil de propietaria activo">
-                  <i>{owner.name.slice(0, 1).toUpperCase()}</i>
-                  <span><strong>{owner.name}</strong><small>Propietaria</small></span>
-                </span>
-                <button type="button" onClick={() => void logoutOwner()}>Cerrar sesión</button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setShowOwnerAccess(true)}>Mi perfil</button>
-            )}
           </div>
         </header>
       )}
@@ -669,6 +656,11 @@ export function ChemicalsPage({
           <a href={`${API_URL}/chemicals/reports/export`}>
             Descargar registros para Excel
           </a>
+          {owner && (
+            <button type="button" onClick={() => void logoutOwner()}>
+              Cerrar sesión
+            </button>
+          )}
         </footer>
       )}
 
@@ -691,7 +683,7 @@ export function ChemicalsPage({
             <div className="chemicals-owner-modal-heading">
               <div>
                 <span>ACCESO PRIVADO</span>
-                <h2 id="chemicals-owner-title">Mi perfil</h2>
+                <h2 id="chemicals-owner-title">Confirmar identidad</h2>
               </div>
               <button
                 type="button"
