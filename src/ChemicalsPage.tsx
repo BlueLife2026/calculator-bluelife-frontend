@@ -81,11 +81,16 @@ function technicianTokenFromSharedLink() {
     ?.trim() ?? '';
 }
 
-function sharedTechnicianUrl() {
+function technicianAccessModeFromLink() {
+  return new URLSearchParams(window.location.search).get('technicianAccess') === '1';
+}
+
+function sharedTechnicianAccessUrl() {
   const url = new URL(window.location.href);
   url.search = '';
   url.hash = '';
   url.searchParams.set('area', 'chemicals');
+  url.searchParams.set('technicianAccess', '1');
   return url.toString();
 }
 
@@ -104,8 +109,12 @@ export function ChemicalsPage({
 }: {
   sidebar: ReactNode;
 }) {
-  const [technicianToken] = useState(technicianTokenFromSharedLink);
+  const [initialTechnicianToken] = useState(technicianTokenFromSharedLink);
+  const [technicianToken, setTechnicianToken] = useState(initialTechnicianToken);
+  const [technicianAccessMode] = useState(technicianAccessModeFromLink);
   const [lockedTechnician, setLockedTechnician] = useState('');
+  const [accessCode, setAccessCode] = useState('');
+  const [accessing, setAccessing] = useState(false);
   const [form, setForm] = useState<ChemicalReportForm>(emptyForm);
   const [reports, setReports] = useState<ChemicalReport[]>([]);
   const [technicians, setTechnicians] = useState<TechnicianDirectoryEntry[]>([]);
@@ -113,15 +122,18 @@ export function ChemicalsPage({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
-  const [shareTechnician, setShareTechnician] = useState('');
-  const isSharedForm = Boolean(technicianToken);
+  const isSharedForm = technicianAccessMode || Boolean(initialTechnicianToken);
 
   useEffect(() => {
     async function loadChemicalWorkspace() {
       if (isSharedForm) {
+        if (!initialTechnicianToken) {
+          setLoading(false);
+          return;
+        }
         try {
           const response = await fetch(
-            `${API_URL}/chemicals/technicians/resolve/${encodeURIComponent(technicianToken)}`,
+            `${API_URL}/chemicals/technicians/resolve/${encodeURIComponent(initialTechnicianToken)}`,
           );
           if (!response.ok) throw new Error('El enlace del técnico no es válido.');
           const technician = await response.json() as { name: string };
@@ -155,7 +167,7 @@ export function ChemicalsPage({
     }
 
     void loadChemicalWorkspace();
-  }, [isSharedForm, technicianToken]);
+  }, [initialTechnicianToken, isSharedForm]);
 
   const reportsToday = reports.filter(
     (report) => report.serviceDate.slice(0, 10) === localDate(),
@@ -225,11 +237,42 @@ export function ChemicalsPage({
     }
   }
 
+  async function submitTechnicianAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    try {
+      setAccessing(true);
+      const response = await fetch(`${API_URL}/chemicals/technicians/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: accessCode.trim() }),
+      });
+      const result = await response.json().catch(() => null) as {
+        name?: string;
+        technicianToken?: string;
+      } | null;
+      if (!response.ok || !result?.name || !result.technicianToken) {
+        throw new Error('No encontramos un técnico con ese nombre.');
+      }
+      setLockedTechnician(result.name);
+      setTechnicianToken(result.technicianToken);
+      setForm((current) => ({ ...current, technicianName: result.name ?? '' }));
+    } catch (accessError) {
+      console.error(accessError);
+      setError(
+        accessError instanceof Error
+          ? accessError.message
+          : 'No se pudo validar el nombre.',
+      );
+    } finally {
+      setAccessing(false);
+    }
+  }
+
   function shareOnWhatsApp() {
-    const technician = technicians.find((item) => item.id === shareTechnician);
-    if (!technician) return;
+    const message = `Hola, usa este enlace para reportar las cantidades de químicos retiradas de bodega: ${sharedTechnicianAccessUrl()}`;
     const whatsappWindow = window.open(
-      `${API_URL}/chemicals/technicians/${encodeURIComponent(technician.id)}/whatsapp?formUrl=${encodeURIComponent(sharedTechnicianUrl())}`,
+      `https://wa.me/?text=${encodeURIComponent(message)}`,
       '_blank',
       'noopener,noreferrer',
     );
@@ -294,29 +337,17 @@ export function ChemicalsPage({
 
           <section className="chemicals-share-panel">
             <div>
-              <span>ENLACE PARA WHATSAPP</span>
-              <h2>Formulario personalizado por técnico</h2>
-              <p>Selecciona el técnico. El enlace abrirá su formulario con el nombre bloqueado.</p>
+              <span>UN SOLO ENLACE PARA WHATSAPP</span>
+              <h2>Acceso general para todos los técnicos</h2>
+              <p>Todos ingresan por el mismo enlace y escriben su nombre para identificarse.</p>
             </div>
-            <div className="chemicals-share-controls">
-              <label htmlFor="chemical-share-technician">Técnico</label>
-              <select
-                id="chemical-share-technician"
-                value={shareTechnician}
-                onChange={(event) => setShareTechnician(event.target.value)}
-              >
-                <option value="">Seleccionar técnico</option>
-                {technicians.map((technician) => (
-                  <option value={technician.id} key={technician.id}>{technician.name}</option>
-                ))}
-              </select>
+            <div className="chemicals-share-controls chemicals-single-share-control">
               <button
                 className="chemicals-whatsapp-button"
                 type="button"
-                disabled={!shareTechnician}
                 onClick={shareOnWhatsApp}
               >
-                Compartir por WhatsApp
+                Compartir enlace único
               </button>
             </div>
           </section>
@@ -326,11 +357,47 @@ export function ChemicalsPage({
       <div className={`chemicals-workspace ${isSharedForm ? 'chemicals-shared-workspace' : ''}`}>
         <section className="chemicals-form-card">
           <div className="chemicals-card-heading">
-            <div><span>NUEVO REGISTRO</span><h2>Retiro de químicos de bodega</h2></div>
-            <small>Todos los campos con * son obligatorios.</small>
+            <div>
+              <span>{isSharedForm && !lockedTechnician ? 'ACCESO DEL TÉCNICO' : 'NUEVO REGISTRO'}</span>
+              <h2>{isSharedForm && !lockedTechnician ? 'Identifícate para continuar' : 'Retiro de químicos de bodega'}</h2>
+            </div>
+            <small>{isSharedForm && !lockedTechnician ? 'Usa tu nombre completo.' : 'Todos los campos con * son obligatorios.'}</small>
           </div>
 
-          <form onSubmit={submitReport}>
+          {isSharedForm && !lockedTechnician ? (
+            <form className="chemicals-access-form" onSubmit={submitTechnicianAccess}>
+              <div className="chemicals-access-intro">
+                <span aria-hidden="true">✓</span>
+                <div>
+                  <h3>Escribe tu nombre completo</h3>
+                  <p>No verás una lista de técnicos. Después de validarlo, tu nombre quedará bloqueado.</p>
+                </div>
+              </div>
+              <div className="form-field">
+                <label htmlFor="chemical-access-code">Nombre del técnico *</label>
+                <input
+                  id="chemical-access-code"
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  maxLength={120}
+                  placeholder="Ejemplo: Angel Viña"
+                  required
+                  value={accessCode}
+                  onChange={(event) => setAccessCode(event.target.value)}
+                />
+              </div>
+              {error && <p className="chemicals-form-message chemicals-form-error">{error}</p>}
+              <div className="chemicals-form-actions">
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={accessing || accessCode.trim().length < 2}
+                >
+                  {accessing ? 'Validando...' : 'Continuar'}
+                </button>
+              </div>
+            </form>
+          ) : <form onSubmit={submitReport}>
             <div className="chemicals-context-grid">
               <div className="form-field">
                 <label htmlFor="chemical-date">Fecha del reporte *</label>
@@ -424,7 +491,7 @@ export function ChemicalsPage({
                 {saving ? 'Guardando...' : 'Guardar registro'}
               </button>
             </div>
-          </form>
+          </form>}
         </section>
 
         {!isSharedForm && <section className="chemicals-history-card">
