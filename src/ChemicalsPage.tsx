@@ -57,12 +57,6 @@ const chemicalFields: Array<{
     shortLabel: 'Cloro',
   },
   {
-    key: 'chlorinePowderScoops',
-    label: 'Cloro en polvo',
-    fixedUnit: { value: 'scoops', label: 'scoops' },
-    shortLabel: 'Cloro polvo',
-  },
-  {
     key: 'muriaticAcidGallons',
     label: 'Ácido muriático',
     fixedUnit: { value: 'gallons', label: 'galones' },
@@ -112,6 +106,12 @@ const chemicalFields: Array<{
     label: 'Fosfato',
     fixedUnit: { value: 'ounces', label: 'onzas' },
     shortLabel: 'Fosfato',
+  },
+  {
+    key: 'chlorinePowderScoops',
+    label: 'Cloro en polvo',
+    fixedUnit: { value: 'scoops', label: 'scoops' },
+    shortLabel: 'Cloro polvo',
   },
 ];
 
