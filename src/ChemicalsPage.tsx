@@ -32,6 +32,8 @@ type ChemicalReport = Record<QuantityKey, number | string> & Record<UnitKey, str
 type TechnicianDirectoryEntry = {
   id: string;
   name: string;
+  whatsappNumber?: string;
+  active?: boolean;
 };
 
 type ChemicalOwner = {
@@ -190,6 +192,7 @@ export function ChemicalsPage({
   const [initialTechnicianToken] = useState(technicianTokenFromSharedLink);
   const [technicianToken, setTechnicianToken] = useState(initialTechnicianToken);
   const [technicianAccessMode] = useState(technicianAccessModeFromLink);
+  const [activeTab, setActiveTab] = useState<'register' | 'technicians'>('register');
   const [lockedTechnician, setLockedTechnician] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [accessing, setAccessing] = useState(false);
@@ -210,6 +213,11 @@ export function ChemicalsPage({
   const [ownerAccessing, setOwnerAccessing] = useState(false);
   const [deletingReportId, setDeletingReportId] = useState('');
   const [reportPendingDeletion, setReportPendingDeletion] = useState<ChemicalReport | null>(null);
+  const [managedTechnicians, setManagedTechnicians] = useState<TechnicianDirectoryEntry[]>([]);
+  const [newTechnicianName, setNewTechnicianName] = useState('');
+  const [newTechnicianPhone, setNewTechnicianPhone] = useState('');
+  const [technicianSaving, setTechnicianSaving] = useState(false);
+  const [technicianMessage, setTechnicianMessage] = useState('');
   const isSharedForm = technicianAccessMode || Boolean(initialTechnicianToken);
 
   useEffect(() => {
@@ -401,6 +409,7 @@ export function ChemicalsPage({
       window.localStorage.setItem(chemicalOwnerTokenKey, result.token);
       setOwnerToken(result.token);
       setOwner(result.owner);
+      await loadManagedTechnicians(result.token);
       setOwnerPassword('');
       setShowOwnerAccess(false);
       const pendingReport = reportPendingDeletion;
@@ -416,6 +425,60 @@ export function ChemicalsPage({
       );
     } finally {
       setOwnerAccessing(false);
+    }
+  }
+
+  async function loadManagedTechnicians(token = ownerToken) {
+    if (!token) return;
+    const response = await fetch(`${API_URL}/chemicals/technicians/directory`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401) {
+      await logoutOwner();
+      throw new Error('Tu sesión venció. Ingresa nuevamente.');
+    }
+    if (!response.ok) throw new Error('No se pudo cargar la lista de técnicos.');
+    setManagedTechnicians(await response.json() as TechnicianDirectoryEntry[]);
+  }
+
+  async function saveTechnician(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ownerToken) {
+      setShowOwnerAccess(true);
+      return;
+    }
+    setTechnicianSaving(true);
+    setTechnicianMessage('');
+    try {
+      const response = await fetch(`${API_URL}/chemicals/technicians`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerToken}` },
+        body: JSON.stringify({ name: newTechnicianName.trim(), whatsappNumber: newTechnicianPhone.trim() }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(Array.isArray(result?.message) ? result.message.join(' ') : result?.message || 'No se pudo agregar el técnico.');
+      setManagedTechnicians((current) => [...current, result as TechnicianDirectoryEntry].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewTechnicianName('');
+      setNewTechnicianPhone('');
+      setTechnicianMessage('Técnico agregado correctamente.');
+    } catch (saveError) {
+      setTechnicianMessage(saveError instanceof Error ? saveError.message : 'No se pudo agregar el técnico.');
+    } finally {
+      setTechnicianSaving(false);
+    }
+  }
+
+  async function deleteTechnician(technician: TechnicianDirectoryEntry) {
+    if (!ownerToken || !window.confirm(`¿Eliminar el acceso de ${technician.name}?`)) return;
+    try {
+      const response = await fetch(`${API_URL}/chemicals/technicians/${technician.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      if (!response.ok) throw new Error('No se pudo eliminar el técnico.');
+      setManagedTechnicians((current) => current.filter((item) => item.id !== technician.id));
+    } catch (deleteError) {
+      window.alert(deleteError instanceof Error ? deleteError.message : 'No se pudo eliminar el técnico.');
     }
   }
 
@@ -500,7 +563,8 @@ export function ChemicalsPage({
       {!isSharedForm && (
         <>
           <nav className="chemicals-tabs" aria-label="Módulos de químicos">
-            <button className="chemicals-tab-active" type="button">Registro</button>
+            <button className={activeTab === 'register' ? 'chemicals-tab-active' : ''} type="button" onClick={() => setActiveTab('register')}>Registro</button>
+            <button className={activeTab === 'technicians' ? 'chemicals-tab-active' : ''} type="button" onClick={() => { setActiveTab('technicians'); if (ownerToken) void loadManagedTechnicians().catch((error) => setTechnicianMessage(error instanceof Error ? error.message : 'No se pudo cargar la lista.')); }}>Técnicos</button>
           </nav>
 
           <section className="chemicals-kpis">
@@ -527,7 +591,7 @@ export function ChemicalsPage({
         </>
       )}
 
-      <div className={`chemicals-workspace ${isSharedForm ? 'chemicals-shared-workspace' : ''}`}>
+      {(isSharedForm || activeTab === 'register') && <div className={`chemicals-workspace ${isSharedForm ? 'chemicals-shared-workspace' : ''}`}>
         <section className="chemicals-form-card">
           <div className="chemicals-card-heading">
             <div>
@@ -725,7 +789,30 @@ export function ChemicalsPage({
             </div>
           )}
         </section>}
-      </div>
+      </div>}
+
+      {!isSharedForm && activeTab === 'technicians' && (
+        <section className="chemicals-technicians-card">
+          {!owner ? (
+            <div className="chemicals-technicians-locked">
+              <h2>Lista de técnicos</h2>
+              <p>Inicia sesión para consultar y administrar los códigos y celulares.</p>
+              <button className="primary-button" type="button" onClick={() => setShowOwnerAccess(true)}>Ingresar para ver la lista</button>
+            </div>
+          ) : (
+            <>
+              <div className="chemicals-card-heading"><div><span>ADMINISTRACIÓN</span><h2>Códigos y celulares</h2></div><small>{managedTechnicians.length} accesos</small></div>
+              <form className="chemicals-technician-form" onSubmit={saveTechnician}>
+                <div className="form-field"><label htmlFor="new-technician-name">Código y nombre *</label><input id="new-technician-name" required maxLength={120} placeholder="Ejemplo: 99 Técnico Ejemplo" value={newTechnicianName} onChange={(event) => setNewTechnicianName(event.target.value)} /></div>
+                <div className="form-field"><label htmlFor="new-technician-phone">Celular de WhatsApp *</label><input id="new-technician-phone" required maxLength={30} placeholder="Ejemplo: +57 300 000 0000" value={newTechnicianPhone} onChange={(event) => setNewTechnicianPhone(event.target.value)} /></div>
+                <button className="primary-button" type="submit" disabled={technicianSaving}>{technicianSaving ? 'Guardando…' : 'Agregar técnico'}</button>
+              </form>
+              {technicianMessage && <p className="chemicals-form-message chemicals-form-success">{technicianMessage}</p>}
+              <div className="chemicals-technician-list">{managedTechnicians.map((technician) => <div className="chemicals-technician-row" key={technician.id}><div><strong>{technician.name}</strong><span>{technician.whatsappNumber}</span></div><button className="chemical-report-delete" type="button" onClick={() => void deleteTechnician(technician)}>Eliminar</button></div>)}</div>
+            </>
+          )}
+        </section>
+      )}
 
       {!isSharedForm && (
         <footer className="chemicals-page-tools">

@@ -3354,6 +3354,29 @@ tbody tr:hover {
   text-align: center;
 }
 
+.chemicals-technicians-card {
+  margin-top: 18px;
+  border: 1px solid #d9e4df;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.chemicals-technicians-locked {
+  padding: 28px;
+  text-align: center;
+}
+
+.chemicals-technicians-locked h2 { margin: 0 0 6px; color: #173f5f; }
+.chemicals-technicians-locked p { margin: 0 0 18px; color: #667085; }
+.chemicals-technician-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; padding: 18px; }
+.chemicals-technician-form .primary-button { min-height: 42px; }
+.chemicals-technician-list { padding: 0 18px 18px; }
+.chemicals-technician-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid #edf2ef; }
+.chemicals-technician-row div { display: grid; gap: 3px; }
+.chemicals-technician-row strong { color: #173f5f; }
+.chemicals-technician-row span { color: #667085; font-size: 12px; }
+
 .chemical-unit-select {
   width: 116px;
   max-width: 45%;
@@ -3673,6 +3696,7 @@ tbody tr:hover {
   .chemicals-notes-field textarea,
   .chemical-quantity-field input { min-height: 44px; font-size: 16px; }
   .chemical-unit-label { width: 100%; max-width: none; flex-basis: auto; min-height: 44px; padding: 12px 9px; font-size: 14px; }
+  .chemicals-technician-form { grid-template-columns: 1fr; }
   .chemical-quantity-field { padding: 9px; }
   .chemical-quantity-control { align-items: flex-start; flex-direction: column; gap: 5px; }
   .chemical-unit-select { width: 100%; max-width: none; min-height: 36px; font-size: 12px; }
