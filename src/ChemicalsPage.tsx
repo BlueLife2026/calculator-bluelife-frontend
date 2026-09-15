@@ -24,10 +24,6 @@ type ChemicalReport = Record<QuantityKey, number | string> & Record<UnitKey, str
   id: string;
   serviceDate: string;
   technicianName: string;
-  propertyId: string | null;
-  propertyName: string | null;
-  waterBodyId: string | null;
-  waterBodyName: string | null;
   notes: string | null;
   createdAt: string;
 };
@@ -74,7 +70,7 @@ const chemicalFields: Array<{
     key: 'stabilizerScoops',
     label: 'Estabilizador',
     unitKey: 'stabilizerUnit',
-    fixedUnit: { value: 'bucket', label: 'Bucket' },
+    fixedUnit: { value: 'bucket', label: 'bucket' },
     shortLabel: 'Estab.',
   },
   {
@@ -689,7 +685,7 @@ export function ChemicalsPage({
                     <div className="chemical-report-topline">
                       <div>
                         <strong>{report.technicianName}</strong>
-                        <small>{report.propertyName || 'Retiro de bodega'}</small>
+                        <small>Retiro de bodega</small>
                       </div>
                       <button
                         className="chemical-report-delete"
@@ -703,7 +699,7 @@ export function ChemicalsPage({
                     </div>
                     <dl>
                       <div><dt>Fecha</dt><dd>{formatReportDate(report.serviceDate)}</dd></div>
-                      <div><dt>Origen</dt><dd>{report.propertyName ? 'Registro anterior' : 'Bodega'}</dd></div>
+                      <div><dt>Origen</dt><dd>Bodega</dd></div>
                     </dl>
                     <div className="chemical-report-quantities">
                       {usedChemicals.map((chemical) => (
