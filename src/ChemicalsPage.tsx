@@ -5,6 +5,7 @@ import { API_URL } from './api';
 type QuantityKey =
   | 'tabsQuantity'
   | 'liquidChlorineGallons'
+  | 'chlorinePowderScoops'
   | 'muriaticAcidGallons'
   | 'shockScoops'
   | 'dePowderBags'
@@ -52,6 +53,12 @@ const chemicalFields: Array<{
     label: 'Cloro líquido',
     fixedUnit: { value: 'gallons', label: 'galones' },
     shortLabel: 'Cloro',
+  },
+  {
+    key: 'chlorinePowderScoops',
+    label: 'Cloro en polvo',
+    fixedUnit: { value: 'scoops', label: 'scoops' },
+    shortLabel: 'Cloro polvo',
   },
   {
     key: 'muriaticAcidGallons',
@@ -119,6 +126,7 @@ function emptyForm(technicianName = ''): ChemicalReportForm {
     tabsQuantity: '',
     tabsUnit: 'units',
     liquidChlorineGallons: '',
+    chlorinePowderScoops: '',
     muriaticAcidGallons: '',
     shockScoops: '',
     dePowderBags: '',
@@ -545,7 +553,7 @@ export function ChemicalsPage({
                   autoCapitalize="words"
                   autoComplete="name"
                   maxLength={120}
-                  placeholder="Ejemplo: 01 Angel Viña"
+                  placeholder="Ejemplo: 99 Técnico Ejemplo"
                   required
                   value={accessCode}
                   onChange={(event) => setAccessCode(event.target.value)}
