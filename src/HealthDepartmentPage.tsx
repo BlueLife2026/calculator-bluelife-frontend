@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { API_URL } from './api';
 
 type HealthTicket = {
   id: string;
@@ -39,8 +40,39 @@ export function HealthDepartmentPage({ sidebar }: { sidebar: ReactNode }) {
   const [email, setEmail] = useState('service@bluelifepools.com');
   const [showNewTicket, setShowNewTicket] = useState(false);
   const [newTicket, setNewTicket] = useState({ property: '', subject: '', visitDate: '' });
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
   const filteredTickets = useMemo(() => filter === 'All' ? tickets : tickets.filter((ticket) => ticket.status === filter), [filter, tickets]);
   const alertTickets = tickets.filter((ticket) => ticket.status !== 'Closed' && daysUntil(ticket.visitDate) <= 10);
+
+  useEffect(() => {
+    void fetch(`${API_URL}/health-department/tickets`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Ticket API unavailable')))
+      .then((rows: Array<{ ticketNumber: string; subject: string; propertyName: string | null; senderEmail: string | null; receivedAt: string; visitDate: string | null; priority: string; status: string; estimateStatus: string }>) => {
+        setTickets(rows.map((row) => ({
+          id: row.ticketNumber, subject: row.subject, property: row.propertyName ?? 'Property pending', sender: row.senderEmail ?? 'Outlook',
+          receivedAt: new Date(row.receivedAt).toLocaleString('en-US'), visitDate: row.visitDate ? new Date(row.visitDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : 'Sep 26',
+          priority: row.priority === 'HIGH' ? 'High' : row.priority === 'LOW' ? 'Low' : 'Medium', status: row.status === 'IN_PROGRESS' ? 'In progress' : row.status === 'WAITING_ESTIMATE' ? 'Waiting estimate' : row.status === 'CLOSED' ? 'Closed' : 'New', estimate: row.estimateStatus === 'REQUIRED' ? 'Required' : row.estimateStatus === 'NOT_REQUIRED' ? 'Not required' : 'Pending',
+        })));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function syncOutlook() {
+    setSyncing(true);
+    setSyncMessage('');
+    try {
+      const response = await fetch(`${API_URL}/health-department/sync`, { method: 'POST' });
+      const result = await response.json() as { created?: number; total?: number; message?: string };
+      if (!response.ok) throw new Error(result.message ?? 'Outlook sync failed');
+      setSyncMessage(`${result.created ?? 0} nuevos tickets · ${result.total ?? tickets.length} en total`);
+      window.location.reload();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'Could not sync Outlook');
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   function createTicket(event: FormEvent) {
     event.preventDefault();
@@ -57,8 +89,10 @@ export function HealthDepartmentPage({ sidebar }: { sidebar: ReactNode }) {
     {sidebar}
     <header className="area-page-header health-header">
       <div><span className="area-eyebrow">COMPLIANCE & SERVICE</span><h1>Health Department</h1><p>Convierte los correos etiquetados en tickets, controla visitas y da seguimiento a los requerimientos que necesitan estimado.</p></div>
-      <div className="area-header-actions"><span className="integration-pill health-email-pill"><i /> {email}</span><button className="secondary-button" type="button" onClick={() => setShowSettings((current) => !current)}>Email settings</button><button className="primary-button" type="button" onClick={() => setShowNewTicket(true)}>+ New ticket</button></div>
+      <div className="area-header-actions"><span className="integration-pill health-email-pill"><i /> Outlook · {email}</span><button className="secondary-button" type="button" onClick={() => void syncOutlook()} disabled={syncing}>{syncing ? 'Syncing…' : 'Sync Outlook'}</button><button className="secondary-button" type="button" onClick={() => setShowSettings((current) => !current)}>Email settings</button><button className="primary-button" type="button" onClick={() => setShowNewTicket(true)}>+ New ticket</button></div>
     </header>
+
+    {syncMessage && <p className="health-sync-message">{syncMessage}</p>}
 
     {showSettings && <section className="health-settings"><div><strong>Ticket intake email</strong><p>Todo correo con la etiqueta <b>Health Department</b> se convertirá en un ticket nuevo.</p></div><div className="health-settings-form"><input aria-label="Health Department email" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="primary-button" type="button" onClick={() => setShowSettings(false)}>Save</button></div></section>}
 

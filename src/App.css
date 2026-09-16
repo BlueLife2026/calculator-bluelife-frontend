@@ -2739,6 +2739,7 @@ tbody tr:hover {
 
 /* Health Department workspace */
 .health-page { background: #f7fbfd; }
+.health-sync-message { margin: -10px 0 16px; color: #026aa2; font-size: 12px; font-weight: 700; }
 @media (max-width: 1000px) { .health-main-grid { grid-template-columns: 1fr; } .health-side-column { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .health-header, .health-settings { align-items: stretch; flex-direction: column; } .health-header .area-header-actions { flex-wrap: wrap; } .health-settings-form input { min-width: 0; flex: 1; } .health-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .health-side-column { grid-template-columns: 1fr; } }
 .health-header { align-items: center; }
