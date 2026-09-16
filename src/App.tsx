@@ -4,12 +4,13 @@ import type { ProposalPdfData } from './proposalPdf';
 import { allocateProposalCosts } from './proposalPricing';
 import { proposalServiceOptions, type ProposalService } from './proposalServices';
 import { ChemicalsPage } from './ChemicalsPage';
+import { HealthDepartmentPage } from './HealthDepartmentPage';
 import './App.css';
 
-type AppArea = 'home' | 'commercial' | 'chemicals' | 'estimates' | 'operations' | 'finance';
+type AppArea = 'home' | 'commercial' | 'chemicals' | 'health' | 'estimates' | 'operations' | 'finance';
 type PropertyTab = 'overview' | 'commercial' | 'estimates' | 'contracts';
 
-const appAreas: AppArea[] = ['home', 'commercial', 'chemicals', 'estimates', 'operations', 'finance'];
+const appAreas: AppArea[] = ['home', 'commercial', 'chemicals', 'health', 'estimates', 'operations', 'finance'];
 
 function initialAppArea(): AppArea {
   const requestedArea = new URLSearchParams(window.location.search).get('area');
@@ -2307,6 +2308,7 @@ function App() {
       { id: 'home', label: 'Home', icon: '⌂' },
       { id: 'commercial', label: 'Commercial', icon: '◎' },
       { id: 'chemicals', label: 'Químicos', icon: '⚗' },
+      { id: 'health', label: 'Health Dept.', icon: '♥' },
       { id: 'estimates', label: 'Estimates', icon: '$' },
       { id: 'operations', label: 'Operations', icon: '◇' },
       { id: 'finance', label: 'Finance', icon: '▤' },
@@ -2454,9 +2456,9 @@ function App() {
     );
   }
 
-  function renderAreaLanding(area: Exclude<AppArea, 'commercial' | 'chemicals' | 'estimates'>) {
+  function renderAreaLanding(area: Exclude<AppArea, 'commercial' | 'chemicals' | 'health' | 'estimates'>) {
     const content = {
-      home: ['BlueLife Workspace', 'One internal system for commercial, chemicals, repairs, operations and finance.', ['Commercial CRM', 'Químicos', 'Estimates', 'Operations', 'Finance']],
+      home: ['BlueLife Workspace', 'One internal system for commercial, chemicals, health compliance, repairs, operations and finance.', ['Commercial CRM', 'Químicos', 'Health Department', 'Estimates', 'Operations', 'Finance']],
       operations: ['Operations', 'Coordinate approved repairs, technicians, scheduled dates and completion.', ['Repair schedule', 'Technician workload', 'Completed work', 'Service alerts']],
       finance: ['Finance', 'Follow converted estimates through invoicing and payment reconciliation.', ['Ready to invoice', 'Invoices issued', 'Revenue', 'QuickBooks status']],
     }[area];
@@ -2467,7 +2469,7 @@ function App() {
         <header className="area-page-header"><div><span className="area-eyebrow">BLUE LIFE INTERNAL APP</span><h1>{content[0]}</h1><p>{content[1]}</p></div></header>
         <section className="area-landing-grid">
           {(content[2] as string[]).map((item, index) => (
-            <button type="button" key={item} onClick={() => area === 'home' && navigateToArea((['commercial', 'chemicals', 'estimates', 'operations', 'finance'] as AppArea[])[index])}>
+            <button type="button" key={item} onClick={() => area === 'home' && navigateToArea((['commercial', 'chemicals', 'health', 'estimates', 'operations', 'finance'] as AppArea[])[index])}>
               <span>{String(index + 1).padStart(2, '0')}</span><strong>{item}</strong><small>{area === 'home' ? 'Open area →' : 'Module foundation ready'}</small>
             </button>
           ))}
@@ -2627,6 +2629,7 @@ function App() {
   }
 
   if (activeArea === 'estimates') return renderEstimatesPage();
+  if (activeArea === 'health') return <HealthDepartmentPage sidebar={renderAppSidebar()} />;
   if (activeArea === 'chemicals') {
     return <ChemicalsPage sidebar={renderAppSidebar()} />;
   }
