@@ -2748,6 +2748,15 @@ tbody tr:hover {
 .health-option { display: flex !important; flex-direction: row !important; align-items: center; gap: 7px; font-weight: 400 !important; }
 .health-detail-grid fieldset { min-width: 0; margin: 0; padding: 10px; border: 1px solid #d0d5dd; border-radius: 7px; }
 .health-detail-grid legend { padding: 0 4px; color: var(--bluelife-navy); font-size: 11px; font-weight: 700; }
+.health-detail-grid > label:nth-child(4) { grid-column: span 2; }
+.health-detail-grid > label:nth-child(4) textarea { min-height: 86px; }
+.health-detail-grid > label:nth-child(6),
+.health-detail-grid > label:nth-child(7),
+.health-detail-grid > label:nth-child(8),
+.health-detail-grid > label:nth-child(9),
+.health-detail-grid > label:nth-child(10),
+.health-detail-grid > label:nth-child(14) { min-height: 72px; box-sizing: border-box; padding: 10px; border: 1px solid #d0d5dd; border-radius: 7px; background: #fff; }
+.health-detail-grid > label:nth-child(6) input:not([type="checkbox"]) { margin-top: 4px; }
 @media (max-width: 800px) { .health-detail-grid { grid-template-columns: 1fr; max-height: 60vh; } }
 .health-page { background: #f7fbfd; }
 .health-sync-message { margin: -10px 0 16px; color: #026aa2; font-size: 12px; font-weight: 700; }
