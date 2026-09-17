@@ -2746,6 +2746,8 @@ tbody tr:hover {
 .health-tabs button span { display: inline-flex; min-width: 19px; justify-content: center; margin-left: 5px; border-radius: 999px; padding: 3px 5px; background: #eaf4ff; color: #026aa2; font-size: 9px; }
 .health-estimate-action { border: 0; border-radius: 8px; padding: 7px 10px; background: #eaf4ff; color: #026aa2; cursor: pointer; font-size: 10px; font-weight: 800; }
 .health-visit-date-input { width: 132px; border: 1px solid #d0d5dd; border-radius: 7px; padding: 6px 7px; background: white; color: var(--bluelife-ink); font: inherit; font-size: 10px; }
+.health-ticket-meta > span:nth-child(3) { display: none; }
+.health-visit-row:has(.health-date-chip strong:empty) { display: none; }
 .health-estimates-panel { min-height: 280px; }
 .health-estimate-management-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 130px auto; gap: 14px; align-items: center; padding: 17px 20px; border-bottom: 1px solid #edf2f5; }
 .health-estimate-management-row:last-child { border-bottom: 0; }
