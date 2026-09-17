@@ -2629,7 +2629,7 @@ function App() {
   }
 
   if (activeArea === 'estimates') return renderEstimatesPage();
-  if (activeArea === 'health') return <HealthDepartmentPage sidebar={renderAppSidebar()} />;
+  if (activeArea === 'health') return <HealthDepartmentPage sidebar={renderAppSidebar()} properties={properties.map((property) => ({ id: property.id, name: property.name }))} />;
   if (activeArea === 'chemicals') {
     return <ChemicalsPage sidebar={renderAppSidebar()} />;
   }
