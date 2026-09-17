@@ -120,7 +120,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
       ['Requires estimate', ticket.estimate === 'REQUIRED' ? 'Yes' : 'No'],
       ['Estimate number', ticket.estimateNumber], ['Estimate status', data['Estado Estimado']], ['Final report', data['Estado Final']],
     ].filter(([, value]) => value);
-    return <div className="health-ticket-summary">{items.map(([label, value]) => <div className="health-summary-chip" key={label}><b>{label}</b><span>{value}</span></div>)}</div>;
+    return <div className="health-ticket-summary">{items.map(([label, value]) => <div className={'health-summary-chip' + (label === 'Estimate number' ? ' health-summary-estimate-number' : label === 'Estimate status' ? ' health-summary-estimate-status' : '')} key={label}><b>{label}</b><span>{value}</span></div>)}</div>;
   }
   return <div className="page app-page health-page">{sidebar}
     <header className="area-page-header health-header"><div><span className="area-eyebrow">COMPLIANCE & SERVICE</span><h1>Health Department</h1></div><div className="health-header-actions"><button className="secondary-button" disabled={busy} onClick={() => void sync()}>Sync</button><button className="primary-button" onClick={newTicket}>+ New ticket</button></div></header>

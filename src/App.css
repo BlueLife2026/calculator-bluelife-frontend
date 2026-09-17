@@ -2791,8 +2791,13 @@ tbody tr:hover {
 .health-upcoming-row > span:last-child { display: grid; gap: 4px; min-width: 0; color: #00577c; overflow-wrap: anywhere; }
 .health-upcoming-row small, .health-upcoming-row em { font-size: 11px; font-style: normal; }
 .health-page .health-ticket-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.health-page .health-summary-chip { display: flex; flex-direction: column; min-width: 0; max-width: 180px; gap: 3px; padding: 6px 10px; border-radius: 12px; overflow-wrap: anywhere; font-size: 10px; }
-.health-page .health-summary-chip b { font-size: 8px; }
+.health-page .health-summary-chip { display: flex; flex-direction: column; min-width: 0; max-width: 180px; gap: 3px; padding: 6px 10px; border: 1px solid #e2e8ee; border-radius: 12px; background: #f8fafc; color: #475467; overflow-wrap: anywhere; font-size: 10px; }
+.health-page .health-summary-chip b { color: #667085; font-size: 8px; }
+.health-page .health-summary-estimate-number { border-color: #075477; background: #075477; color: #fff; }
+.health-page .health-summary-estimate-number b { color: #d2efff; }
+.health-page .health-summary-estimate-status { border-color: #a6cddd; background: #edf7fc; color: #075477; }
+.health-page .health-summary-estimate-status b { color: #075477; }
+.health-page .health-summary-estimate-number > span, .health-page .health-summary-estimate-status > span { font-size: 12px; font-weight: 800; }
 .health-form-grid > label:nth-child(n) { grid-column: auto; padding: 0; border: 0; background: transparent; min-height: 0; }
 .health-form-grid > label.health-violations-field { grid-column: span 2; }
 .health-initial-column { display: grid; align-content: start; gap: 12px; }
