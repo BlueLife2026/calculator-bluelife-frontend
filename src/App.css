@@ -2774,6 +2774,13 @@ tbody tr:hover {
 .health-detail-grid > fieldset:nth-child(6) { display: flex; flex-direction: column; }
 .health-detail-grid > fieldset:nth-child(6) > label:nth-of-type(2) { order: 3; }
 .health-detail-grid > fieldset:nth-child(6) > label:nth-of-type(3) { order: 2; }
+.health-ticket-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.health-summary-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; border: 1px solid #cce6f1; border-radius: 999px; background: #f0fbff; color: #176b91; font-size: 10px; font-weight: 500; }
+.health-summary-chip b { color: #026aa2; font-size: 9px; text-transform: uppercase; }
+.health-summary-chip:nth-child(2n) { border-color: #d9e8d0; background: #f3fbef; color: #377a3d; }
+.health-summary-chip:nth-child(2n) b { color: #287436; }
+.health-summary-chip:nth-child(3n) { border-color: #ead8f5; background: #fbf3ff; color: #72419a; }
+.health-summary-chip:nth-child(3n) b { color: #6941c6; }
 @media (max-width: 800px) { .health-detail-grid { grid-template-columns: 1fr; max-height: 60vh; } }
 .health-page { background: #f7fbfd; }
 .health-sync-message { margin: -10px 0 16px; color: #026aa2; font-size: 12px; font-weight: 700; }
