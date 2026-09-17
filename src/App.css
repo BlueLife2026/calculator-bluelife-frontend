@@ -2769,6 +2769,8 @@ tbody tr:hover {
 .health-detail-grid > label:nth-child(9) > select,
 .health-detail-grid > label:nth-child(10) > select,
 .health-detail-grid > label:nth-child(14) > select { width: 100%; }
+.health-detail-grid > label:nth-child(15),
+.health-detail-grid > label:nth-child(16) { display: none; }
 @media (max-width: 800px) { .health-detail-grid { grid-template-columns: 1fr; max-height: 60vh; } }
 .health-page { background: #f7fbfd; }
 .health-sync-message { margin: -10px 0 16px; color: #026aa2; font-size: 12px; font-weight: 700; }
