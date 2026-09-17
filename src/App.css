@@ -2743,6 +2743,11 @@ tbody tr:hover {
 .health-detail-grid label { display: flex; flex-direction: column; gap: 5px; color: var(--bluelife-navy); font-size: 11px; font-weight: 700; }
 .health-detail-grid input, .health-detail-grid select, .health-detail-grid textarea { min-width: 0; border: 1px solid #d0d5dd; border-radius: 7px; padding: 8px; background: white; color: var(--bluelife-ink); font: inherit; font-size: 11px; font-weight: 400; }
 .health-detail-grid textarea { resize: vertical; }
+.health-check-field { align-items: flex-start; justify-content: center; }
+.health-check-field input[type="checkbox"], .health-option input[type="checkbox"] { width: 16px; min-height: 16px; accent-color: #026aa2; }
+.health-option { display: flex !important; flex-direction: row !important; align-items: center; gap: 7px; font-weight: 400 !important; }
+.health-detail-grid fieldset { min-width: 0; margin: 0; padding: 10px; border: 1px solid #d0d5dd; border-radius: 7px; }
+.health-detail-grid legend { padding: 0 4px; color: var(--bluelife-navy); font-size: 11px; font-weight: 700; }
 @media (max-width: 800px) { .health-detail-grid { grid-template-columns: 1fr; max-height: 60vh; } }
 .health-page { background: #f7fbfd; }
 .health-sync-message { margin: -10px 0 16px; color: #026aa2; font-size: 12px; font-weight: 700; }
