@@ -246,6 +246,7 @@ export function ChemicalsPage({
   const [deletingReportId, setDeletingReportId] = useState('');
   const [editingReportId, setEditingReportId] = useState('');
   const [reportPendingDeletion, setReportPendingDeletion] = useState<ChemicalReport | null>(null);
+  const [reportPendingEdit, setReportPendingEdit] = useState<ChemicalReport | null>(null);
   const [managedTechnicians, setManagedTechnicians] = useState<TechnicianDirectoryEntry[]>([]);
   const [newTechnicianName, setNewTechnicianName] = useState('');
   const [newTechnicianPhone, setNewTechnicianPhone] = useState('');
@@ -356,7 +357,7 @@ export function ChemicalsPage({
       setSaving(true);
       const response = await fetch(`${API_URL}/chemicals/reports${editingReportId ? `/${editingReportId}` : ''}`, {
         method: editingReportId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(ownerToken ? { Authorization: `Bearer ${ownerToken}` } : {}) },
         body: JSON.stringify({
           serviceDate: form.serviceDate,
           technicianName: form.technicianName.trim(),
@@ -458,6 +459,9 @@ export function ChemicalsPage({
       if (pendingReport) {
         await removeReport(pendingReport, result.owner, result.token);
       }
+      const pendingEdit = reportPendingEdit;
+      setReportPendingEdit(null);
+      if (pendingEdit) editReport(pendingEdit, result.token);
     } catch (ownerAccessError) {
       window.alert(
         ownerAccessError instanceof Error
@@ -545,7 +549,12 @@ export function ChemicalsPage({
     setOwner(null);
   }
 
-  function editReport(report: ChemicalReport) {
+  function editReport(report: ChemicalReport, activeOwnerToken = ownerToken) {
+    if (!activeOwnerToken) {
+      setReportPendingEdit(report);
+      setShowOwnerAccess(true);
+      return;
+    }
     setForm({ serviceDate: report.serviceDate.slice(0, 10), technicianName: report.technicianName, ...Object.fromEntries(chemicalFields.map(({ key }) => [key, String(report[key] ?? '')])), tabsUnit: report.tabsUnit, dePowderUnit: report.dePowderUnit, stabilizerUnit: report.stabilizerUnit } as ChemicalReportForm);
     setEditingReportId(report.id);
     setError('');
