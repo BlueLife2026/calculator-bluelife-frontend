@@ -3543,6 +3543,21 @@ tbody tr:hover {
   color: #b42318;
 }
 
+.chemical-report-topline > .chemical-report-edit,
+.chemical-report-topline > .chemical-report-delete {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 5px 0;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.chemical-report-topline > .chemical-report-edit {
+  margin-left: auto;
+  color: #026aa2;
+}
+
 .chemical-report-delete:hover {
   text-decoration: underline;
 }
