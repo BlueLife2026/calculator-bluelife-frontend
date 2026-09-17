@@ -5,6 +5,7 @@ import { allocateProposalCosts } from './proposalPricing';
 import { proposalServiceOptions, type ProposalService } from './proposalServices';
 import { ChemicalsPage } from './ChemicalsPage';
 import { HealthDepartmentPage } from './HealthDepartmentPage';
+import { PropertyHistoryPage } from './PropertyHistoryPage';
 import './App.css';
 
 type AppArea = 'home' | 'commercial' | 'chemicals' | 'health' | 'estimates' | 'operations' | 'finance';
@@ -2633,7 +2634,8 @@ function App() {
   if (activeArea === 'chemicals') {
     return <ChemicalsPage sidebar={renderAppSidebar()} />;
   }
-  if (activeArea === 'home' || activeArea === 'operations' || activeArea === 'finance') {
+  if (activeArea === 'home') return <PropertyHistoryPage sidebar={renderAppSidebar()} properties={properties} onOpenHealth={() => navigateToArea('health')} />;
+  if (activeArea === 'operations' || activeArea === 'finance') {
     return renderAreaLanding(activeArea);
   }
 
