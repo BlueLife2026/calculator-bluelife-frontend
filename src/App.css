@@ -3428,7 +3428,10 @@ tbody tr:hover {
 .chemicals-technician-form .primary-button { min-height: 42px; }
 .chemicals-technician-list { padding: 0 18px 18px; }
 .chemicals-technician-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid #edf2ef; }
-.chemicals-technician-row div { display: grid; gap: 3px; }
+.chemicals-technician-row > div:first-child { display: grid; gap: 3px; }
+.chemicals-technician-row .chemicals-technician-actions { display: flex; align-items: center; gap: 18px; margin-left: auto; }
+.chemicals-technician-actions .chemical-report-edit,
+.chemicals-technician-actions .chemical-report-delete { padding: 5px 0; font-size: 10px; line-height: 1.2; }
 .chemicals-technician-row strong { color: #173f5f; }
 .chemicals-technician-row span { color: #667085; font-size: 12px; }
 
