@@ -30,7 +30,7 @@ export function healthDate(value: string = ''): string {
 
 export function inspectionAlertDate(ticket: { visitDate: string; healthData: Record<string, string> }): { date: string; label: string } {
   const deadline = healthDate(ticket.healthData['Fecha Límite'] || '');
-  return deadline ? { date: deadline, label: 'Reinspection deadline' } : { date: healthDate(ticket.visitDate), label: 'Inspection date' };
+  return { date: deadline, label: 'Reinspection deadline' };
 }
 
 export function daysUntilInspection(value: string, now = new Date()): number {

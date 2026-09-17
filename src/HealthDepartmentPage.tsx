@@ -126,7 +126,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
   return <div className="page app-page health-page">{sidebar}
     <header className="area-page-header health-header"><div><span className="area-eyebrow">COMPLIANCE & SERVICE</span><h1>Health Department</h1></div><div className="health-header-actions"><button className="secondary-button" disabled={busy} onClick={() => void sync()}>Sync</button><button className="primary-button" onClick={newTicket}>+ New ticket</button></div></header>
     {message && <p role="status" className="health-sync-message">{message}</p>}
-    {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} inspections within 10 days</strong><p>Based on reinspection deadlines, or inspection dates when no deadline is assigned.</p></div></div>}
+    {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} reinspections within 10 days</strong><p>Based only on assigned reinspection deadlines.</p></div></div>}
     <div className="health-main-grid">
       <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div>
         <div className="health-ticket-list">{filtered.length === 0 && <p className="health-empty">No tickets to display.</p>}{filtered.map((ticket) => <article className="health-ticket" key={ticket.id}>
@@ -138,9 +138,9 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
         </article>)}</div>
       </section>
       <aside className="health-card health-upcoming">
-        <div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Reinspection deadline first; otherwise, inspection date.</p></div></div>
+        <div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Based only on assigned reinspection deadlines.</p></div></div>
         <div className="health-signal-legend" aria-label="Inspection priority legend"><span><i className="health-signal-dot health-signal-red" />0–2 days</span><span><i className="health-signal-dot health-signal-yellow" />3–5 days</span><span><i className="health-signal-dot health-signal-green" />6–10 days</span></div>
-        {upcoming.length === 0 && <p className="health-empty">No upcoming inspections assigned.</p>}
+        {upcoming.length === 0 && <p className="health-empty">No upcoming reinspection deadlines assigned.</p>}
         {upcoming.map(({ ticket, date, label }) => {
           const days = daysUntilInspection(date, clock);
           const signal = inspectionSignal(days);
