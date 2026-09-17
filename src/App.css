@@ -2974,6 +2974,8 @@ tbody tr:hover {
   font-size: 10px;
   font-weight: 750;
 }
+.chemicals-technician-actions { display: flex; align-items: center; gap: 18px; }
+.chemical-report-edit { border: 0; padding: 0; background: transparent; color: #026aa2; cursor: pointer; font: inherit; font-weight: 700; }
 
 .chemicals-tabs {
   display: flex;

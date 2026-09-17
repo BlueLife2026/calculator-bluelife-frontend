@@ -170,6 +170,38 @@ function quantityLabel(value: number | string) {
   return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
+function reportDuplicateKey(report: {
+  serviceDate: string;
+  technicianName: string;
+  [key: string]: unknown;
+}) {
+  const technician = report.technicianName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+  const quantity = (value: unknown) => Number(value) || 0;
+  return JSON.stringify([
+    report.serviceDate.slice(0, 10),
+    technician,
+    quantity(report.tabsQuantity),
+    report.tabsUnit || 'units',
+    quantity(report.liquidChlorineGallons),
+    quantity(report.chlorinePowderScoops),
+    quantity(report.muriaticAcidGallons),
+    quantity(report.shockScoops),
+    quantity(report.dePowderBags),
+    report.dePowderUnit || 'bags',
+    quantity(report.bicarbonateScoops),
+    quantity(report.stabilizerScoops),
+    report.stabilizerUnit || 'bucket',
+    quantity(report.saltBags),
+    quantity(report.phosphatesOunces),
+    report.notes || null,
+  ]);
+}
+
 function selectedUnitLabel(
   report: ChemicalReport,
   chemical: (typeof chemicalFields)[number],
@@ -218,6 +250,7 @@ export function ChemicalsPage({
   const [newTechnicianPhone, setNewTechnicianPhone] = useState('');
   const [technicianSaving, setTechnicianSaving] = useState(false);
   const [technicianMessage, setTechnicianMessage] = useState('');
+  const [editingTechnician, setEditingTechnician] = useState<TechnicianDirectoryEntry | null>(null);
   const isSharedForm = technicianAccessMode || Boolean(initialTechnicianToken);
 
   useEffect(() => {
@@ -309,6 +342,12 @@ export function ChemicalsPage({
 
     if (!Object.values(quantities).some((value) => value > 0)) {
       setError('Registra al menos una cantidad de químico mayor que cero.');
+      return;
+    }
+
+    const duplicateKey = reportDuplicateKey(form);
+    if (reports.some((report) => reportDuplicateKey(report) === duplicateKey)) {
+      setError('Este registro ya fue guardado anteriormente para ese técnico y fecha.');
       return;
     }
 
@@ -482,6 +521,16 @@ export function ChemicalsPage({
     }
   }
 
+  async function updateTechnician(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ownerToken || !editingTechnician) return;
+    const response = await fetch(`${API_URL}/chemicals/technicians/${editingTechnician.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerToken}` }, body: JSON.stringify({ name: editingTechnician.name.trim(), whatsappNumber: (editingTechnician.whatsappNumber ?? '').trim() }) });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) { window.alert(result?.message || 'No se pudo actualizar el técnico.'); return; }
+    setManagedTechnicians((current) => current.map((item) => item.id === editingTechnician.id ? result as TechnicianDirectoryEntry : item).sort((a, b) => a.name.localeCompare(b.name)));
+    setEditingTechnician(null);
+  }
+
   async function logoutOwner() {
     if (ownerToken) {
       await fetch(`${API_URL}/chemicals/owner/logout`, {
@@ -550,6 +599,10 @@ export function ChemicalsPage({
   return (
     <div className={`page chemicals-page ${isSharedForm ? 'chemicals-shared-page' : 'app-page'}`}>
       {!isSharedForm && sidebar}
+
+      {editingTechnician && (
+        <div className="modal-backdrop"><section className="property-modal repair-request-modal" role="dialog" aria-modal="true"><div className="edit-panel-header"><div><h2>Editar técnico</h2><p>Corrige el nombre o el celular sin eliminar el acceso.</p></div><button className="modal-close" type="button" onClick={() => setEditingTechnician(null)}>&times;</button></div><form onSubmit={(event) => void updateTechnician(event)}><div className="form-grid"><div className="form-field form-field-wide"><label>Nombre y código *</label><input required maxLength={120} value={editingTechnician.name} onChange={(event) => setEditingTechnician({ ...editingTechnician, name: event.target.value })} /></div><div className="form-field form-field-wide"><label>Celular de WhatsApp *</label><input required maxLength={30} value={editingTechnician.whatsappNumber ?? ''} onChange={(event) => setEditingTechnician({ ...editingTechnician, whatsappNumber: event.target.value })} /></div></div><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setEditingTechnician(null)}>Cancelar</button><button className="primary-button" type="submit">Guardar cambios</button></div></form></section></div>
+      )}
 
       {!isSharedForm && (
         <header className="area-page-header chemicals-page-header">
@@ -808,7 +861,7 @@ export function ChemicalsPage({
                 <button className="primary-button" type="submit" disabled={technicianSaving}>{technicianSaving ? 'Guardando…' : 'Agregar técnico'}</button>
               </form>
               {technicianMessage && <p className="chemicals-form-message chemicals-form-success">{technicianMessage}</p>}
-              <div className="chemicals-technician-list">{managedTechnicians.map((technician) => <div className="chemicals-technician-row" key={technician.id}><div><strong>{technician.name}</strong><span>{technician.whatsappNumber}</span></div><button className="chemical-report-delete" type="button" onClick={() => void deleteTechnician(technician)}>Eliminar</button></div>)}</div>
+              <div className="chemicals-technician-list">{managedTechnicians.map((technician) => <div className="chemicals-technician-row" key={technician.id}><div><strong>{technician.name}</strong><span>{technician.whatsappNumber}</span></div><div className="chemicals-technician-actions"><button className="chemical-report-edit" type="button" onClick={() => setEditingTechnician({ ...technician })}>Editar</button><button className="chemical-report-delete" type="button" onClick={() => void deleteTechnician(technician)}>Eliminar</button></div></div>)}</div>
             </>
           )}
         </section>
