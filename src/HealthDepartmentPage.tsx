@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { API_URL } from './api';
-import { daysUntilInspection, englishChemical, englishHealthStatus, estimateStatusOptions, inspectionSignal } from './healthDisplay';
+import { daysUntilInspection, englishChemical, englishHealthStatus, estimateStatusOptions, healthDate, inspectionAlertDate, inspectionSignal } from './healthDisplay';
 
 type Comment = { id: string; author: string; body: string; createdAt: string };
 type Ticket = { id: string; subject: string; property: string; sender: string; receivedAt: string; visitDate: string; status: string; estimate: string; estimateNumber: string; healthData: Record<string, string>; comments: Comment[] };
@@ -15,12 +15,7 @@ const groups: Array<[string, string, string[]]> = [
   ['Rules / Water level', 'Rules / Water level', ['Rules', 'Water level', 'water clarity']],
   ['Step / Handrail', 'Step / Handrail', ['Step', 'Handrail']],
 ];
-function dateValue(value: string) {
-  if (!value) return '';
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-}
+const dateValue = healthDate;
 function asList(value: string) {
   try { const result: unknown = JSON.parse(value || '[]'); return Array.isArray(result) ? result.map(String) : value ? [value] : []; }
   catch { return value ? [value] : []; }
@@ -62,8 +57,8 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
     return () => window.clearInterval(timer);
   }, []);
   const filtered = useMemo(() => tickets.filter((ticket) => filter === 'All' || ticket.status === filter), [tickets, filter]);
-  const upcoming = useMemo(() => tickets.filter((ticket) => ticket.status !== 'CLOSED' && ticket.visitDate && daysUntilInspection(ticket.visitDate, clock) >= 0).sort((a, b) => a.visitDate.localeCompare(b.visitDate)), [tickets, clock]);
-  const urgent = upcoming.filter((ticket) => daysUntilInspection(ticket.visitDate, clock) <= 10);
+  const upcoming = useMemo(() => tickets.map((ticket) => ({ ticket, ...inspectionAlertDate(ticket) })).filter(({ ticket, date }) => ticket.status !== 'CLOSED' && date && daysUntilInspection(date, clock) >= 0).sort((a, b) => a.date.localeCompare(b.date)), [tickets, clock]);
+  const urgent = upcoming.filter(({ date }) => daysUntilInspection(date, clock) <= 10);
   function newTicket() {
     setMessage('');
     setEditing({ id: '', subject: 'Health Department visit', property: '', sender: '', receivedAt: '', visitDate: '', status: 'NEW', estimate: 'NOT_REQUIRED', estimateNumber: '', healthData: {}, comments: [] });
@@ -131,7 +126,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
   return <div className="page app-page health-page">{sidebar}
     <header className="area-page-header health-header"><div><span className="area-eyebrow">COMPLIANCE & SERVICE</span><h1>Health Department</h1></div><div className="health-header-actions"><button className="secondary-button" disabled={busy} onClick={() => void sync()}>Sync</button><button className="primary-button" onClick={newTicket}>+ New ticket</button></div></header>
     {message && <p role="status" className="health-sync-message">{message}</p>}
-    {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} inspections within 10 days</strong><p>Based on the inspection dates assigned in your tickets.</p></div></div>}
+    {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} inspections within 10 days</strong><p>Based on reinspection deadlines, or inspection dates when no deadline is assigned.</p></div></div>}
     <div className="health-main-grid">
       <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div>
         <div className="health-ticket-list">{filtered.length === 0 && <p className="health-empty">No tickets to display.</p>}{filtered.map((ticket) => <article className="health-ticket" key={ticket.id}>
@@ -143,15 +138,15 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
         </article>)}</div>
       </section>
       <aside className="health-card health-upcoming">
-        <div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Based on assigned inspection dates.</p></div></div>
+        <div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Reinspection deadline first; otherwise, inspection date.</p></div></div>
         <div className="health-signal-legend" aria-label="Inspection priority legend"><span><i className="health-signal-dot health-signal-red" />0–2 days</span><span><i className="health-signal-dot health-signal-yellow" />3–5 days</span><span><i className="health-signal-dot health-signal-green" />6–10 days</span></div>
         {upcoming.length === 0 && <p className="health-empty">No upcoming inspections assigned.</p>}
-        {upcoming.map((ticket) => {
-          const days = daysUntilInspection(ticket.visitDate, clock);
+        {upcoming.map(({ ticket, date, label }) => {
+          const days = daysUntilInspection(date, clock);
           const signal = inspectionSignal(days);
           return <button key={ticket.id} className={'health-upcoming-row health-inspection-' + signal} onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}>
-            <span className="health-date-chip"><strong>{Number(ticket.visitDate.slice(8))}</strong><small>{new Date(ticket.visitDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}</small></span>
-            <span className="health-inspection-info"><strong>{ticket.property || 'Select property'}</strong><small>{ticket.id} · {ticket.visitDate}</small><em className="health-inspection-countdown"><i className={'health-signal-dot health-signal-' + signal} />{days === 0 ? 'Today' : days + (days === 1 ? ' day remaining' : ' days remaining')}</em></span>
+            <span className="health-date-chip"><strong>{Number(date.slice(8))}</strong><small>{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}</small></span>
+            <span className="health-inspection-info"><strong>{ticket.property || 'Select property'}</strong><small>{ticket.id}</small><small>{label}: {date}</small><em className="health-inspection-countdown"><i className={'health-signal-dot health-signal-' + signal} />{days === 0 ? 'Today' : days + (days === 1 ? ' day remaining' : ' days remaining')}</em></span>
           </button>;
         })}
       </aside>
