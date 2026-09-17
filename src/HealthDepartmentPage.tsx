@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { API_URL } from './api';
+import { englishChemical, englishHealthStatus, estimateStatusOptions } from './healthDisplay';
 
 type Comment = { id: string; author: string; body: string; createdAt: string };
 type Ticket = { id: string; subject: string; property: string; sender: string; receivedAt: string; visitDate: string; status: string; estimate: string; estimateNumber: string; healthData: Record<string, string>; comments: Comment[] };
 const groups: Array<[string, string, string[]]> = [
-  ['Quimico', 'Chemical', ['Ph', 'Cloro', 'Estabilizador']],
+  ['Quimico', 'Chemical', ['pH', 'Chlorine', 'Stabilizer']],
   ['Feeders', 'Feeders', ['Ph Feeder', 'Chlorine Feeder', 'Disinfection Feeder']],
   ['Main drain', 'Main drain', ['Main drain']],
   ['Flow meter /  Flow rate', 'Flow meter / Flow rate', ['Flow meter', 'Flow rate']],
@@ -25,7 +26,11 @@ function asList(value: string) {
   catch { return value ? [value] : []; }
 }
 function mapTicket(row: Record<string, any>): Ticket {
-  const data = row.healthData ?? {};
+  const data = { ...(row.healthData ?? {}) };
+  for (const field of ['Estado Estimado', 'Estado', 'Estado Final']) {
+    if (typeof data[field] === 'string') data[field] = englishHealthStatus(data[field]);
+  }
+  if (typeof data.Quimico === 'string') data.Quimico = JSON.stringify(asList(data.Quimico).map(englishChemical));
   return { id: row.ticketNumber, subject: row.subject || 'Health Department request', property: row.propertyName || data.Propiedad || '', sender: row.senderEmail || 'Historical / manual', receivedAt: row.receivedAt, visitDate: dateValue(data['Fecha de Inicio'] || row.visitDate || ''), status: row.status || 'NEW', estimate: row.estimateStatus || 'PENDING', estimateNumber: row.estimateNumber || data.Estimado || '', healthData: data, comments: row.comments || [] };
 }
 function daysUntil(value: string) {
@@ -144,7 +149,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
       <label>Ticket status<select value={editing.status} onChange={(event) => setEditing({ ...editing, status: event.target.value })}><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></label>
       <div className="health-initial-column">{reportStatus('Estado', 'Initial report status')}<label>Reinspection deadline<input type="date" value={dateValue(editing.healthData['Fecha Límite'] || '')} onChange={(event) => update('Fecha Límite', event.target.value)} /></label></div>
       <label className="health-violations-field">Violations<textarea rows={5} value={editing.healthData.Violaciones || ''} onChange={(event) => update('Violaciones', event.target.value)} /></label>
-      <fieldset><legend>Requires estimate</legend><label className="health-option"><input type="checkbox" checked={editing.estimate === 'REQUIRED'} onChange={(event) => setEditing({ ...editing, estimate: event.target.checked ? 'REQUIRED' : 'NOT_REQUIRED' })} />Yes</label>{editing.estimate === 'REQUIRED' && <><label>Estimate number<input value={editing.estimateNumber} onChange={(event) => setEditing({ ...editing, estimateNumber: event.target.value })} /></label><label>Estimate status<select value={editing.healthData['Estado Estimado'] || ''} onChange={(event) => update('Estado Estimado', event.target.value)}><option value="">Select status</option>{['Required', 'Sent', 'Approved', 'Rejected', 'Converted'].map((value) => <option key={value}>{value}</option>)}</select></label></>}</fieldset>
+<fieldset><legend>Requires estimate</legend><label className="health-option"><input type="checkbox" checked={editing.estimate === 'REQUIRED'} onChange={(event) => setEditing({ ...editing, estimate: event.target.checked ? 'REQUIRED' : 'NOT_REQUIRED' })} />Yes</label>{editing.estimate === 'REQUIRED' && <><label>Estimate number<input value={editing.estimateNumber} onChange={(event) => setEditing({ ...editing, estimateNumber: event.target.value })} /></label><label>Estimate status<select value={editing.healthData['Estado Estimado'] || ''} onChange={(event) => update('Estado Estimado', event.target.value)}><option value="">Select status</option>{[...estimateStatusOptions, ...(editing.healthData['Estado Estimado'] && !estimateStatusOptions.includes(editing.healthData['Estado Estimado']) ? [editing.healthData['Estado Estimado']] : [])].map((value) => <option key={value}>{value}</option>)}</select></label></>}</fieldset>
       {groups.map(([field, label, options]) => <fieldset key={field}><legend>{label}</legend>{options.map((option) => <label className="health-option" key={option}><input type="checkbox" checked={asList(editing.healthData[field]).includes(option)} onChange={(event) => { const list = asList(editing.healthData[field]); update(field, JSON.stringify(event.target.checked ? [...new Set([...list, option])] : list.filter((item) => item !== option))); }} />{option}</label>)}</fieldset>)}
       <div className="health-final-field">{reportStatus('Estado Final', 'Final report status')}</div>
     </div>{message && <p role="alert">{message}</p>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Cancel</button><button className="primary-button" disabled={busy}>{busy ? 'Saving...' : 'Save ticket'}</button></div></form></section></div>}
