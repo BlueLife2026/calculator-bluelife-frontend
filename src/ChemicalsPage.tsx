@@ -244,6 +244,7 @@ export function ChemicalsPage({
   const [ownerPassword, setOwnerPassword] = useState('');
   const [ownerAccessing, setOwnerAccessing] = useState(false);
   const [deletingReportId, setDeletingReportId] = useState('');
+  const [editingReportId, setEditingReportId] = useState('');
   const [reportPendingDeletion, setReportPendingDeletion] = useState<ChemicalReport | null>(null);
   const [managedTechnicians, setManagedTechnicians] = useState<TechnicianDirectoryEntry[]>([]);
   const [newTechnicianName, setNewTechnicianName] = useState('');
@@ -346,15 +347,15 @@ export function ChemicalsPage({
     }
 
     const duplicateKey = reportDuplicateKey(form);
-    if (reports.some((report) => reportDuplicateKey(report) === duplicateKey)) {
+    if (reports.some((report) => report.id !== editingReportId && reportDuplicateKey(report) === duplicateKey)) {
       setError('Este registro ya fue guardado anteriormente para ese técnico y fecha.');
       return;
     }
 
     try {
       setSaving(true);
-      const response = await fetch(`${API_URL}/chemicals/reports`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/chemicals/reports${editingReportId ? `/${editingReportId}` : ''}`, {
+        method: editingReportId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceDate: form.serviceDate,
@@ -375,12 +376,13 @@ export function ChemicalsPage({
         throw new Error(message || 'No se pudo guardar el registro.');
       }
 
-      setReports((current) => [result as ChemicalReport, ...current]);
+      setReports((current) => editingReportId ? current.map((report) => report.id === editingReportId ? result as ChemicalReport : report) : [result as ChemicalReport, ...current]);
+      setEditingReportId('');
       setForm((current) => ({
         ...emptyForm(lockedTechnician || current.technicianName),
         serviceDate: current.serviceDate,
       }));
-      setSavedMessage('Registro guardado correctamente en el sistema.');
+      setSavedMessage(editingReportId ? 'Registro actualizado correctamente.' : 'Registro guardado correctamente en el sistema.');
     } catch (submitError) {
       console.error(submitError);
       setError(
@@ -541,6 +543,14 @@ export function ChemicalsPage({
     window.localStorage.removeItem(chemicalOwnerTokenKey);
     setOwnerToken('');
     setOwner(null);
+  }
+
+  function editReport(report: ChemicalReport) {
+    setForm({ serviceDate: report.serviceDate.slice(0, 10), technicianName: report.technicianName, ...Object.fromEntries(chemicalFields.map(({ key }) => [key, String(report[key] ?? '')])), tabsUnit: report.tabsUnit, dePowderUnit: report.dePowderUnit, stabilizerUnit: report.stabilizerUnit } as ChemicalReportForm);
+    setEditingReportId(report.id);
+    setError('');
+    setSavedMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function requestRemoveReport(report: ChemicalReport) {
@@ -766,8 +776,9 @@ export function ChemicalsPage({
               <button
                 className="secondary-button"
                 type="button"
-                onClick={() => {
+                  onClick={() => {
                   setForm(emptyForm(lockedTechnician));
+                  setEditingReportId('');
                   setError('');
                   setSavedMessage('');
                 }}
@@ -780,7 +791,7 @@ export function ChemicalsPage({
                 type="submit"
                 disabled={saving || loading || !form.serviceDate || !form.technicianName.trim()}
               >
-                {saving ? 'Guardando...' : 'Guardar registro'}
+                {saving ? 'Guardando...' : editingReportId ? 'Guardar cambios' : 'Guardar registro'}
               </button>
             </div>
           </form>}
@@ -812,7 +823,7 @@ export function ChemicalsPage({
                         <strong>{report.technicianName}</strong>
                         <small>Retiro de bodega</small>
                       </div>
-                      <button
+                      <button className="chemical-report-edit" type="button" onClick={() => editReport(report)}>Editar</button><button
                         className="chemical-report-delete"
                         type="button"
                         disabled={deletingReportId === report.id}
