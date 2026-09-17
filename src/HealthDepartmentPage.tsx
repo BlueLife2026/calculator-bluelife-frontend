@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { API_URL } from './api';
-import { englishChemical, englishHealthStatus, estimateStatusOptions } from './healthDisplay';
+import { daysUntilInspection, englishChemical, englishHealthStatus, estimateStatusOptions, inspectionSignal } from './healthDisplay';
 
 type Comment = { id: string; author: string; body: string; createdAt: string };
 type Ticket = { id: string; subject: string; property: string; sender: string; receivedAt: string; visitDate: string; status: string; estimate: string; estimateNumber: string; healthData: Record<string, string>; comments: Comment[] };
@@ -33,10 +33,6 @@ function mapTicket(row: Record<string, any>): Ticket {
   if (typeof data.Quimico === 'string') data.Quimico = JSON.stringify(asList(data.Quimico).map(englishChemical));
   return { id: row.ticketNumber, subject: row.subject || 'Health Department request', property: row.propertyName || data.Propiedad || '', sender: row.senderEmail || 'Historical / manual', receivedAt: row.receivedAt, visitDate: dateValue(data['Fecha de Inicio'] || row.visitDate || ''), status: row.status || 'NEW', estimate: row.estimateStatus || 'PENDING', estimateNumber: row.estimateNumber || data.Estimado || '', healthData: data, comments: row.comments || [] };
 }
-function daysUntil(value: string) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.round((new Date(value + 'T00:00:00').getTime() - today.getTime()) / 86400000);
-}
 const statusLabel = (value: string) => value === 'CLOSED' ? 'Closed' : value === 'IN_PROGRESS' ? 'In progress' : 'New';
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(API_URL + path, options);
@@ -54,15 +50,20 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
   const [author, setAuthor] = useState('Health Department');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [clock, setClock] = useState(() => new Date());
   const [deleting, setDeleting] = useState<Ticket | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState(() => sessionStorage.getItem('bluelife-health-admin-token') || localStorage.getItem('bluelife-chemicals-owner-token') || '');
   async function load() { const rows = await request('/health-department/tickets'); setTickets(rows.map(mapTicket)); }
   useEffect(() => { void load().catch((error: Error) => setMessage(error.message)); }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const filtered = useMemo(() => tickets.filter((ticket) => filter === 'All' || ticket.status === filter), [tickets, filter]);
-  const upcoming = useMemo(() => tickets.filter((ticket) => ticket.status !== 'CLOSED' && ticket.visitDate && daysUntil(ticket.visitDate) >= 0).sort((a, b) => a.visitDate.localeCompare(b.visitDate)), [tickets]);
-  const urgent = upcoming.filter((ticket) => daysUntil(ticket.visitDate) <= 10);
+  const upcoming = useMemo(() => tickets.filter((ticket) => ticket.status !== 'CLOSED' && ticket.visitDate && daysUntilInspection(ticket.visitDate, clock) >= 0).sort((a, b) => a.visitDate.localeCompare(b.visitDate)), [tickets, clock]);
+  const urgent = upcoming.filter((ticket) => daysUntilInspection(ticket.visitDate, clock) <= 10);
   function newTicket() {
     setMessage('');
     setEditing({ id: '', subject: 'Health Department visit', property: '', sender: '', receivedAt: '', visitDate: '', status: 'NEW', estimate: 'NOT_REQUIRED', estimateNumber: '', healthData: {}, comments: [] });
@@ -141,7 +142,19 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
           {openComments === ticket.id && <div className="health-comments-panel"><div className="health-comments-list">{ticket.comments.map((comment) => <div className="health-comment" key={comment.id}><strong>{comment.author}</strong><small> {new Date(comment.createdAt).toLocaleString()}</small><p>{comment.body}</p></div>)}</div><form className="health-comment-form" onSubmit={(event) => void addComment(event, ticket)}><input aria-label="Comment author" required value={author} onChange={(event) => setAuthor(event.target.value)} /><textarea aria-label="Comment" required rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="secondary-button" disabled={busy}>Add comment</button></form></div>}
         </article>)}</div>
       </section>
-      <aside className="health-card health-upcoming"><div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Alerts start 10 days before inspection.</p></div></div>{upcoming.length === 0 && <p className="health-empty">No upcoming inspections assigned.</p>}{upcoming.map((ticket) => <button key={ticket.id} className="health-upcoming-row" onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}><span className="health-date-chip"><strong>{Number(ticket.visitDate.slice(8))}</strong><small>{new Date(ticket.visitDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}</small></span><span><strong>{ticket.property || 'Select property'}</strong><small>{ticket.visitDate}</small><em className={daysUntil(ticket.visitDate) <= 10 ? 'health-due' : ''}>{daysUntil(ticket.visitDate) === 0 ? 'Today' : daysUntil(ticket.visitDate) + ' days remaining'}</em></span></button>)}</aside>
+      <aside className="health-card health-upcoming">
+        <div className="health-card-heading"><div><h2>Upcoming inspections</h2><p>Based on assigned inspection dates.</p></div></div>
+        <div className="health-signal-legend" aria-label="Inspection priority legend"><span><i className="health-signal-dot health-signal-red" />0–2 days</span><span><i className="health-signal-dot health-signal-yellow" />3–5 days</span><span><i className="health-signal-dot health-signal-green" />6–10 days</span></div>
+        {upcoming.length === 0 && <p className="health-empty">No upcoming inspections assigned.</p>}
+        {upcoming.map((ticket) => {
+          const days = daysUntilInspection(ticket.visitDate, clock);
+          const signal = inspectionSignal(days);
+          return <button key={ticket.id} className={'health-upcoming-row health-inspection-' + signal} onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}>
+            <span className="health-date-chip"><strong>{Number(ticket.visitDate.slice(8))}</strong><small>{new Date(ticket.visitDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}</small></span>
+            <span className="health-inspection-info"><strong>{ticket.property || 'Select property'}</strong><small>{ticket.id} · {ticket.visitDate}</small><em className="health-inspection-countdown"><i className={'health-signal-dot health-signal-' + signal} />{days === 0 ? 'Today' : days + (days === 1 ? ' day remaining' : ' days remaining')}</em></span>
+          </button>;
+        })}
+      </aside>
     </div>
     {editing && <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-label={editing.id ? 'Edit ticket' : 'New ticket'} className="property-modal repair-request-modal health-editor-modal"><div className="edit-panel-header"><h2>{editing.id ? 'Edit ' + editing.id : 'New ticket'}</h2><button className="modal-close" aria-label="Close editor" onClick={() => setEditing(null)}>&times;</button></div><form onSubmit={(event) => void save(event)}><div className="health-detail-grid health-form-grid">
       <label>Property<select required value={editing.property} onChange={(event) => setEditing({ ...editing, property: event.target.value })}><option value="">Select property</option>{editing.property && !properties.some((property) => property.name === editing.property) && <option>{editing.property}</option>}{properties.map((property) => <option key={property.id} value={property.name}>{property.name}</option>)}</select></label>

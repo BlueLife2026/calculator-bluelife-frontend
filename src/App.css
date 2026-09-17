@@ -2790,6 +2790,23 @@ tbody tr:hover {
 .health-upcoming-row { display: flex; width: 100%; gap: 12px; padding: 16px; text-align: left; border: 0; border-bottom: 1px solid #edf2f5; background: white; cursor: pointer; }
 .health-upcoming-row > span:last-child { display: grid; gap: 4px; min-width: 0; color: #00577c; overflow-wrap: anywhere; }
 .health-upcoming-row small, .health-upcoming-row em { font-size: 11px; font-style: normal; }
+.health-signal-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #edf2f5; color: #667085; font-size: 10px; }
+.health-signal-legend > span, .health-inspection-countdown { display: inline-flex; align-items: center; gap: 6px; }
+.health-signal-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.health-signal-red { background: #d92d20; }
+.health-signal-yellow { background: #eaaa08; }
+.health-signal-green { background: #16a34a; }
+.health-signal-neutral { background: #98a2b3; }
+.health-upcoming-row { border-left: 4px solid transparent; }
+.health-upcoming-row.health-inspection-red { border-left-color: #d92d20; background: #fff4f3; }
+.health-upcoming-row.health-inspection-yellow { border-left-color: #eaaa08; background: #fffbeb; }
+.health-upcoming-row.health-inspection-green { border-left-color: #16a34a; background: #f0fdf4; }
+.health-inspection-red .health-date-chip { color: #b42318; background: #fee4e2; }
+.health-inspection-yellow .health-date-chip { color: #854d0e; background: #fef0c7; }
+.health-inspection-green .health-date-chip { color: #166534; background: #dcfce7; }
+.health-inspection-red .health-inspection-countdown { color: #b42318; font-weight: 800; }
+.health-inspection-yellow .health-inspection-countdown { color: #854d0e; font-weight: 800; }
+.health-inspection-green .health-inspection-countdown { color: #166534; font-weight: 800; }
 .health-page .health-ticket-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .health-page .health-summary-chip { display: flex; flex-direction: column; min-width: 0; max-width: 180px; gap: 3px; padding: 6px 10px; border: 1px solid #e2e8ee; border-radius: 12px; background: #f8fafc; color: #475467; overflow-wrap: anywhere; font-size: 10px; }
 .health-page .health-summary-chip b { color: #667085; font-size: 8px; }
