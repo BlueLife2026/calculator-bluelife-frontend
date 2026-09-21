@@ -51,16 +51,16 @@
 .health-page .health-ticket-meta,
 .health-page .health-card-heading p,
 .health-page .health-empty { color: #8f6872; }
-.health-page .health-summary-chip { border-color: #f3d9df; background: var(--health-rose-050); color: #8a5864; }
-.health-page .health-summary-chip b { color: var(--health-rose-700); }
-.health-page .health-summary-chip:nth-child(2n) { border-color: #f6d7df; background: #fff1f4; color: #9a5366; }
-.health-page .health-summary-chip:nth-child(2n) b { color: #b33d5d; }
-.health-page .health-summary-chip:nth-child(3n) { border-color: #efc4d0; background: #fde8ed; color: #91435a; }
-.health-page .health-summary-chip:nth-child(3n) b { color: var(--health-rose-800); }
-.health-page .health-summary-estimate-number { border-color: var(--health-rose-800); background: var(--health-rose-800); }
-.health-page .health-summary-estimate-number b { color: #ffdce3; }
-.health-page .health-summary-estimate-status { border-color: #efaebb; background: #fff0f3; color: var(--health-rose-800); }
-.health-page .health-summary-estimate-status b { color: var(--health-rose-800); }
+.health-page .health-summary-chip,
+.health-page .health-summary-chip:nth-child(2n),
+.health-page .health-summary-chip:nth-child(3n) { border-color: #e2e8ee; background: #f8fafc; color: #475467; }
+.health-page .health-summary-chip b,
+.health-page .health-summary-chip:nth-child(2n) b,
+.health-page .health-summary-chip:nth-child(3n) b { color: #667085; }
+.health-page .health-summary-chip.health-summary-estimate-number { border-color: var(--health-rose-800); background: var(--health-rose-800); color: #fff; }
+.health-page .health-summary-chip.health-summary-estimate-number b { color: #ffdce3; }
+.health-page .health-summary-chip.health-summary-estimate-status { border-color: #efaebb; background: #fff0f3; color: var(--health-rose-800); }
+.health-page .health-summary-chip.health-summary-estimate-status b { color: var(--health-rose-800); }
 
 .health-page .health-signal-legend { border-color: #f6e2e6; color: #8f6872; }
 .health-page .health-upcoming-row { border-color: #f6e2e6; }
