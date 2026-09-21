@@ -2,6 +2,90 @@
   box-sizing: border-box;
 }
 
+/* Health Department — soft pink workspace palette */
+.health-page {
+  --health-rose-900: #8f2948;
+  --health-rose-800: #a93657;
+  --health-rose-700: #c94f6d;
+  --health-rose-500: #e57d90;
+  --health-rose-100: #ffe4e8;
+  --health-rose-050: #fff7f8;
+  --health-border: #f1cbd3;
+  background: linear-gradient(180deg, #fff7f8 0, #fffafb 280px, #fff4f6 100%);
+}
+
+.health-page .area-eyebrow,
+.health-page .health-card-heading h2,
+.health-page .health-ticket h3,
+.health-page .health-upcoming-row > span:last-child,
+.health-page .health-detail-grid label,
+.health-page .health-detail-grid legend { color: var(--health-rose-900); }
+.health-page .area-page-header h1 { color: var(--health-rose-800); }
+.health-page .health-card,
+.health-page .health-card-heading { border-color: var(--health-border); }
+.health-page .health-card { background: #fff; box-shadow: 0 10px 30px rgba(201, 79, 109, .08); }
+.health-page .health-card-heading { background: rgba(255, 247, 248, .72); }
+.health-page .health-card-heading select,
+.health-page .health-detail-grid input,
+.health-page .health-detail-grid select,
+.health-page .health-detail-grid textarea,
+.health-page .health-comment-form input,
+.health-page .health-comment-form textarea,
+.health-page .health-delete-modal input { border-color: var(--health-border); }
+.health-page .primary-button { background: var(--health-rose-700); }
+.health-page .primary-button:hover { background: var(--health-rose-800); }
+.health-page .secondary-button { border-color: var(--health-border); color: var(--health-rose-800); background: #fff; }
+.health-page .secondary-button:hover { background: var(--health-rose-050); }
+.health-page .health-property-link,
+.health-page .health-ticket-id,
+.health-page .health-sync-message { color: var(--health-rose-700); }
+
+.health-page .health-alert-banner { border-color: #f4b3bf; background: #fff0f3; }
+.health-page .health-alert-banner > div strong { color: var(--health-rose-900); }
+.health-page .health-alert-banner p { color: #a34a61; }
+.health-page .health-alert-icon { background: var(--health-rose-500); }
+.health-page .health-ticket { border-color: #f6e2e6; }
+.health-page .health-status-new,
+.health-page .health-estimate-action { background: var(--health-rose-100); color: var(--health-rose-800); }
+.health-page .health-status-in-progress { background: #fbdce3; color: #a52e50; }
+.health-page .health-ticket-meta,
+.health-page .health-card-heading p,
+.health-page .health-empty { color: #8f6872; }
+.health-page .health-summary-chip { border-color: #f3d9df; background: var(--health-rose-050); color: #8a5864; }
+.health-page .health-summary-chip b { color: var(--health-rose-700); }
+.health-page .health-summary-chip:nth-child(2n) { border-color: #f6d7df; background: #fff1f4; color: #9a5366; }
+.health-page .health-summary-chip:nth-child(2n) b { color: #b33d5d; }
+.health-page .health-summary-chip:nth-child(3n) { border-color: #efc4d0; background: #fde8ed; color: #91435a; }
+.health-page .health-summary-chip:nth-child(3n) b { color: var(--health-rose-800); }
+.health-page .health-summary-estimate-number { border-color: var(--health-rose-800); background: var(--health-rose-800); }
+.health-page .health-summary-estimate-number b { color: #ffdce3; }
+.health-page .health-summary-estimate-status { border-color: #efaebb; background: #fff0f3; color: var(--health-rose-800); }
+.health-page .health-summary-estimate-status b { color: var(--health-rose-800); }
+
+.health-page .health-signal-legend { border-color: #f6e2e6; color: #8f6872; }
+.health-page .health-upcoming-row { border-color: #f6e2e6; }
+.health-page .health-upcoming-row.health-inspection-red { border-left-color: #d94b62; background: #fff0f2; }
+.health-page .health-upcoming-row.health-inspection-yellow { border-left-color: #e3a21a; background: #fff8e8; }
+.health-page .health-upcoming-row.health-inspection-green { border-left-color: #22a363; background: #effaf3; }
+.health-page .health-inspection-red .health-date-chip { color: #b52c49; background: #ffdce3; }
+.health-page .health-inspection-yellow .health-date-chip { color: #95620c; background: #ffedbd; }
+.health-page .health-inspection-green .health-date-chip { color: #197443; background: #d8f5e3; }
+.health-page .health-comments-button { background: #fff0f3; color: #9a5366; }
+.health-page .health-comments-panel { border-color: var(--health-border); background: #fff7f8; }
+.health-page .health-comment { border-color: #f1d7dd; }
+.health-page .health-delete-button { background: #fff0f2; color: #b52c49; }
+
+.health-page .health-detail-grid fieldset { border-color: var(--health-border); }
+.health-page .health-detail-grid input:focus,
+.health-page .health-detail-grid select:focus,
+.health-page .health-detail-grid textarea:focus { border-color: var(--health-rose-500); outline: 3px solid rgba(229, 125, 144, .18); }
+.health-page .health-check-field input[type="checkbox"],
+.health-page .health-option input[type="checkbox"],
+.health-page .health-form-grid input[type="checkbox"] { accent-color: var(--health-rose-700); }
+.health-page .health-editor-modal .edit-panel-header { background: #fff1f4; border-color: var(--health-border); }
+.health-page .health-editor-modal .edit-panel-header h2,
+.health-page .health-delete-modal h2 { color: var(--health-rose-900); }
+
 :root {
   --bluelife-navy: #005a87;
   --bluelife-blue-dark: #0c71c3;
