@@ -45,9 +45,9 @@
 .health-page .health-alert-banner p { color: #a34a61; }
 .health-page .health-alert-icon { background: var(--health-rose-500); }
 .health-page .health-ticket { border-color: #f6e2e6; }
-.health-page .health-status-new,
 .health-page .health-estimate-action { background: var(--health-rose-100); color: var(--health-rose-800); }
-.health-page .health-status-in-progress { background: #fbdce3; color: #a52e50; }
+.health-page .health-status-new { background: #eaf4ff; color: #026aa2; }
+.health-page .health-status-in-progress { background: #f4ebff; color: #6941c6; }
 .health-page .health-ticket-meta,
 .health-page .health-card-heading p,
 .health-page .health-empty { color: #8f6872; }
