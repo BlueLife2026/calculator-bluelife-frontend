@@ -38,6 +38,7 @@ const isPerson = (item: Person | IncidentType): item is Person => 'role' in item
 const fileSize = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 const reportImportanceLabel = (value: string) => value === 'HIGH' ? 'Alta' : value === 'LOW' ? 'Baja' : 'Media';
 const reportStatusLabel = (value: string) => value === 'SOLVED' ? 'Solucionada' : 'Pendiente';
+const REPORT_COLOR_PALETTE = ['#55b5d3', '#72a7db', '#8a83d5', '#cf8bd6', '#ef946b', '#e8b552', '#80c49e', '#52b7a5'];
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, options);
@@ -76,6 +77,8 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configKind, setConfigKind] = useState<'type' | 'supervisor' | 'inspector' | 'technician'>('supervisor');
   const [newOption, setNewOption] = useState('');
+  const [newOptionColor, setNewOptionColor] = useState(REPORT_COLOR_PALETTE[0]);
+  const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportMode, setReportMode] = useState<'DAY' | 'RANGE'>('DAY');
   const [reportDay, setReportDay] = useState(today());
@@ -255,7 +258,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
   async function saveOption(event: FormEvent) {
     event.preventDefault(); if (!newOption.trim() || busy) return;
     setBusy(true);
-    try { await request(`/reports/config/${configKind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newOption.trim() }) }); setNewOption(''); await load(); }
+    try { await request(`/reports/config/${configKind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newOption.trim(), color: configKind === 'technician' ? newOptionColor : undefined }) }); setNewOption(''); await load(); }
     catch (optionError) { setError((optionError as Error).message); }
     finally { setBusy(false); }
   }
@@ -270,6 +273,11 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
   }
   async function setDefaultSupervisor(technician: Person, supervisorId: string) {
     await request(`/reports/config/technician/${technician.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: technician.name, color: technician.color, defaultSupervisorId: supervisorId || undefined }) });
+    await load();
+  }
+  async function setOptionColor(technician: Person, color: string) {
+    await request(`/reports/config/technician/${technician.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: technician.name, color, defaultSupervisorId: technician.defaultSupervisorId }) });
+    setColorPickerFor(null);
     await load();
   }
 
@@ -342,7 +350,22 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
       </section>
     </div>}
     {solving&&<div className="modal-backdrop"><section className="property-modal reports-solve-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>CLOSE REPORT</span><h2>{solving.propertyName}</h2></div><button onClick={()=>setSolving(null)} aria-label="Close">×</button></div><div className="reports-solve-summary"><b>{solving.type.name} · {importanceLabel(solving.importance)}</b><p>{solving.description}</p><small>{solving.technician.name} · Supervisor: {solving.supervisor.name}</small></div><form onSubmit={solveIncident}><label><span>What was done?</span><textarea required rows={5} value={resolution} onChange={(event)=>setResolution(event.target.value)} placeholder="Describe the completed work…" /></label><label className="reports-confirm"><input type="checkbox" checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)} /> I confirm that this report has been resolved.</label><div className="modal-actions"><button type="button" className="reports-button reports-button-ghost" onClick={()=>setSolving(null)}>Cancel</button><button className="reports-button reports-button-solved" disabled={!confirmed||!resolution.trim()||busy}>Mark as solved</button></div></form></section></div>}
-    {settingsOpen&&<div className="modal-backdrop"><section className="property-modal reports-settings-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>REPORTS SETUP</span><h2>Configuration lists</h2></div><button onClick={()=>setSettingsOpen(false)} aria-label="Close">×</button></div><p className="reports-settings-intro">Names live here, not in the form. Renaming an item updates the history automatically.</p><div className="reports-settings-tabs">{(['supervisor','inspector','technician','type'] as const).map((kind)=><button key={kind} className={configKind===kind?'active':''} onClick={()=>setConfigKind(kind)}>{kind[0].toUpperCase()+kind.slice(1)}s</button>)}</div><form className="reports-add-option" onSubmit={saveOption}><input required value={newOption} onChange={(event)=>setNewOption(event.target.value)} placeholder={`Add ${configKind}`} /><button className="reports-button reports-button-primary" disabled={busy}>Add</button></form><div className="reports-option-list">{configItems.map((item)=><div key={item.id} className="reports-option-row"><span><i style={{background:item.color||'#9eb1bd'}} />{item.name}</span>{configKind==='technician'&&isPerson(item)&&<select aria-label={`Default supervisor for ${item.name}`} value={item.defaultSupervisorId||''} onChange={(event)=>void setDefaultSupervisor(item,event.target.value)}><option value="">No default supervisor</option>{supervisors.map((supervisor)=><option key={supervisor.id} value={supervisor.id}>{supervisor.name}</option>)}</select>}<div><button onClick={()=>void renameOption(item)}>Edit</button><button className="danger" onClick={()=>void deleteOption(item)}>Remove</button></div></div>)}{configItems.length===0&&<p className="reports-empty">No items yet.</p>}</div></section></div>}
+    {settingsOpen&&<div className="modal-backdrop"><section className="property-modal reports-settings-modal" role="dialog" aria-modal="true">
+      <div className="reports-modal-heading"><div><span>REPORTS SETUP</span><h2>Configuration lists</h2></div><button onClick={()=>setSettingsOpen(false)} aria-label="Close">×</button></div>
+      <p className="reports-settings-intro">Names live here, not in the form. Renaming an item updates the history automatically.</p>
+      <div className="reports-settings-tabs">{(['supervisor','inspector','technician','type'] as const).map((kind)=><button key={kind} className={configKind===kind?'active':''} onClick={()=>{setConfigKind(kind);setColorPickerFor(null);}}>{kind[0].toUpperCase()+kind.slice(1)}s</button>)}</div>
+      <form className="reports-add-option" onSubmit={saveOption}>
+        <input required value={newOption} onChange={(event)=>setNewOption(event.target.value)} placeholder={`Add ${configKind}`} />
+        <button className="reports-button reports-button-primary" disabled={busy}>Add</button>
+        {configKind==='technician'&&<div className="reports-color-palette reports-new-color-palette"><span>Choose technician color</span><div>{REPORT_COLOR_PALETTE.map((color)=><button key={color} type="button" className={newOptionColor===color?'selected':''} style={{background:color}} onClick={()=>setNewOptionColor(color)} aria-label={`Use color ${color}`} />)}</div></div>}
+      </form>
+      <div className="reports-option-list">{configItems.map((item)=><div key={item.id} className="reports-option-row">
+        <span>{configKind==='technician'&&isPerson(item)?<button type="button" className="reports-option-color-button" onClick={()=>setColorPickerFor((current)=>current===item.id?null:item.id)} aria-label={`Change color for ${item.name}`}><i style={{background:item.color||'#9eb1bd'}} /></button>:<i style={{background:item.color||'#9eb1bd'}} />}{item.name}</span>
+        {configKind==='technician'&&isPerson(item)&&<select aria-label={`Default supervisor for ${item.name}`} value={item.defaultSupervisorId||''} onChange={(event)=>void setDefaultSupervisor(item,event.target.value)}><option value="">No default supervisor</option>{supervisors.map((supervisor)=><option key={supervisor.id} value={supervisor.id}>{supervisor.name}</option>)}</select>}
+        <div><button onClick={()=>void renameOption(item)}>Edit</button><button className="danger" onClick={()=>void deleteOption(item)}>Remove</button></div>
+        {configKind==='technician'&&isPerson(item)&&colorPickerFor===item.id&&<div className="reports-color-palette reports-existing-color-palette"><span>Change color</span><div>{REPORT_COLOR_PALETTE.map((color)=><button key={color} type="button" className={item.color===color?'selected':''} style={{background:color}} onClick={()=>void setOptionColor(item,color)} aria-label={`Use color ${color} for ${item.name}`} />)}</div></div>}
+      </div>)}{configItems.length===0&&<p className="reports-empty">No items yet.</p>}</div>
+    </section></div>}
     {reportOpen&&<div className="modal-backdrop reports-report-backdrop"><section className="reports-report-dialog" role="dialog" aria-modal="true"><div className="reports-report-controls"><div><button className={reportMode==='DAY'?'active':''} onClick={()=>setReportMode('DAY')}>Un día</button><button className={reportMode==='RANGE'?'active':''} onClick={()=>setReportMode('RANGE')}>Rango de fechas</button>{reportMode==='DAY'?<input type="date" value={reportDay} onChange={(event)=>setReportDay(event.target.value)} />:<><input type="date" value={reportFrom} onChange={(event)=>setReportFrom(event.target.value)} /><span>al</span><input type="date" value={reportTo} onChange={(event)=>setReportTo(event.target.value)} /></>}</div><div><button onClick={()=>setPrinting(true)}>PDF</button><button onClick={downloadExcelReport}>Excel</button><button onClick={()=>exportCsv(reportItems)}>CSV</button><button className="reports-report-close" onClick={()=>setReportOpen(false)}>×</button></div></div><ReportSheet title={reportTitle} subtitle={reportSubtitle} items={reportItems} distribution={distribution} /></section></div>}
     {printing&&createPortal(<div className="reports-print-portal reports-pdf-capture"><ReportSheet title={reportTitle} subtitle={reportSubtitle} items={reportItems} distribution={distribution} /></div>, document.body)}
   </div>;
@@ -356,8 +379,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
       <td>{incident.inspector?.name ?? <span className="reports-muted">Not applicable</span>}</td><td>{incident.technician.name}</td><td>{incident.supervisor.name}</td>
       <td><span className={`reports-status reports-status-${incident.status.toLowerCase()}`}>{statusLabel(incident.status)}</span></td>
       <td className="reports-action-cell"><div className="reports-row-actions">{incident.status === 'PENDING' ? <button className="solve" onClick={() => { setSolving(incident); setResolution(incident.resolution ?? ''); setConfirmed(false); }}>✓ Solve</button> : <button onClick={() => void reopen(incident)}>Reopen</button>}</div></td>
-      <td className="reports-edit-cell"><div className="reports-row-actions"><button onClick={() => openEdit(incident)}>Edit</button></div></td>
-      <td className="reports-delete-cell"><div className="reports-row-actions"><button className="danger" onClick={() => void removeIncident(incident)}>Delete</button></div></td>
+      <td className="reports-edit-delete-cell" colSpan={2}><div className="reports-row-actions reports-edit-delete-actions"><button onClick={() => openEdit(incident)}>Edit</button><button className="danger" onClick={() => void removeIncident(incident)}>Delete</button></div></td>
     </tr>;
   }
 }
