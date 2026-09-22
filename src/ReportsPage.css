@@ -66,7 +66,6 @@
 .reports-bar-row > strong { color: var(--reports-navy); font-size: 10px; text-align: right; }.reports-bar-row > strong small { color: var(--reports-muted); font-weight: 600; }
 
 .reports-table-card { overflow: hidden; }
-.reports-table-actions label { display: flex; align-items: center; gap: 6px; color: var(--reports-muted); font-size: 9px; }
 .reports-table-actions button { border: 1px solid var(--reports-line); border-radius: 8px; padding: 7px 9px; background: white; color: #087392; cursor: pointer; font-size: 9px; font-weight: 800; }
 .reports-table-wrap { overflow-x: auto; border-top: 1px solid #e7eff2; }
 .reports-table { width: 100%; min-width: 1220px; border-collapse: collapse; font-size: 9px; }
@@ -80,8 +79,6 @@
 .reports-status-pending { background: #fff0e7; color: #bd6739; }.reports-status-solved { background: #e5f6eb; color: #287c50; }
 .reports-muted { color: #8a9ba3; }.reports-empty { padding: 18px; color: var(--reports-muted); font-size: 10px; text-align: center; }
 .reports-row-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 135px; }.reports-row-actions button { border: 0; border-radius: 6px; padding: 5px 7px; background: #edf4f6; color: #4e6874; cursor: pointer; font-size: 8px; font-weight: 800; }.reports-row-actions button.solve { background: #e7f6ed; color: #287c50; }.reports-row-actions button.danger { background: #fff0f0; color: #b44444; }
-.reports-month-row td { border-bottom: 1px solid #cfe3e9; background: #f2fafc; color: var(--reports-navy); font-size: 10px; font-weight: 800; text-transform: uppercase; }.reports-month-row span { float: right; color: #8b75cb; font-size: 8px; text-transform: none; }
-
 .reports-editor { width: min(920px,100%); }.reports-solve-modal { width: min(580px,100%); }.reports-settings-modal { width: min(720px,100%); }
 .reports-modal-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -24px -24px 20px; padding: 17px 22px; border-bottom: 1px solid var(--reports-line); background: #f4fafc; }.reports-modal-heading span { color: #1682a2; font-size: 8px; font-weight: 850; letter-spacing: .13em; }.reports-modal-heading h2 { margin: 4px 0 0; color: var(--reports-navy); font-size: 18px; }.reports-modal-heading > button { border: 0; background: transparent; color: #637e89; cursor: pointer; font-size: 24px; }
 .reports-form-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; max-height: 68vh; overflow-y: auto; padding: 2px; }.reports-form-property { grid-column: span 2; }.reports-form-description, .reports-form-attachments { grid-column: 1/-1; }.reports-form-grid textarea { resize: vertical; }
