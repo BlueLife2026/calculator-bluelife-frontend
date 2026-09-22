@@ -100,9 +100,9 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
           if (!sheet) throw new Error('The report is not ready to export.');
           const canvas = await html2canvas(sheet, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
           if (cancelled) return;
-          const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-          const pageWidth = 297;
-          const pageHeight = 210;
+          const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+          const pageWidth = 210;
+          const pageHeight = 297;
           const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
           const width = canvas.width * scale;
           const height = canvas.height * scale;
@@ -367,5 +367,21 @@ function AttachmentLinks({ attachments }: { attachments: ReportAttachment[] }) {
 function ReportSheet({ title, subtitle, items, distribution }: { title: string; subtitle: string; items: Incident[]; distribution: (items: Incident[], key: DistributionKey) => Array<{id:string;label:string;color:string;count:number}> }) {
   const pending = items.filter((item) => item.status === 'PENDING');
   const charts: Array<[DistributionKey, string]> = [['type', 'Por tipo de novedad'], ['property', 'Por propiedad'], ['technician', 'Por técnico'], ['importance', 'Por importancia']];
-  return <div className="reports-print-sheet"><header><span>BLUE LIFE POOL SERVICE · TAMPA, FLORIDA</span><h1>{title}</h1><p>{subtitle}</p></header><section className="reports-print-kpis"><div><strong>{items.length}</strong><span>Total de novedades</span></div><div><strong>{pending.length}</strong><span>Pendientes</span></div><div><strong>{items.length - pending.length}</strong><span>Solucionadas</span></div><div><strong>{items.filter((item) => item.requiresInspector).length}</strong><span>Requieren inspector</span></div></section><h2>Resumen del período</h2><section className="reports-print-charts">{charts.map(([key, label]) => <article key={key}><h3>{label}</h3>{distribution(items, key).slice(0, 7).map((row) => <div key={row.id}><span><i style={{ background: row.color }} />{row.label}</span><b><em style={{ width: `${items.length ? row.count / items.length * 100 : 0}%`, background: row.color }} /></b><strong>{items.length ? Math.round(row.count / items.length * 100) : 0}% · {row.count}</strong></div>)}</article>)}</section><h2>Novedades registradas</h2><div className="reports-print-table-wrap"><table><thead><tr><th>Fecha</th><th>Propiedad</th><th>Tipo</th><th>Importancia</th><th>Descripción</th><th>Inspector</th><th>Técnico</th><th>Supervisor</th><th>Estado</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{reportDate(item.occurredAt)}</td><td>{item.propertyName}</td><td>{item.type.name}</td><td>{reportImportanceLabel(item.importance)}</td><td>{item.description}{item.resolution && <small><b>HECHO:</b> {item.resolution}</small>}{item.attachments?.length > 0 && <small><b>ARCHIVOS:</b> {item.attachments.map((file) => file.fileName).join(', ')}</small>}</td><td>{item.inspector?.name ?? 'No aplica'}</td><td>{item.technician.name}</td><td>{item.supervisor.name}</td><td>{reportStatusLabel(item.status)}</td></tr>)}</tbody></table></div><section className="reports-print-pending"><h2>▲ Pendientes al cierre</h2>{pending.length === 0 ? <p>No hay novedades pendientes en este período.</p> : <ul>{pending.map((item) => <li key={item.id}><b>{reportDate(item.occurredAt)} · {item.propertyName}</b> — {item.type.name} · {reportImportanceLabel(item.importance)}: {item.description}</li>)}</ul>}</section><footer>Blue Life Pool Service · Generado {new Date().toLocaleString('es-ES')}</footer></div>;
+  return <div className="reports-print-sheet">
+    <header><span>BLUE LIFE POOL SERVICE · TAMPA, FLORIDA</span><h1>{title}</h1><p>{subtitle}</p></header>
+    <section className="reports-print-kpis"><div><strong>{items.length}</strong><span>Total de novedades</span></div><div><strong>{pending.length}</strong><span>Pendientes</span></div><div><strong>{items.length - pending.length}</strong><span>Solucionadas</span></div><div><strong>{items.filter((item) => item.requiresInspector).length}</strong><span>Requieren inspector</span></div></section>
+    <h2>Resumen del período</h2>
+    <section className="reports-print-charts">{charts.map(([key, label]) => <article key={key}><h3>{label}</h3>{distribution(items, key).slice(0, 7).map((row) => <div key={row.id}><span><i style={{ background: row.color }} />{row.label}</span><b><em style={{ width: `${items.length ? row.count / items.length * 100 : 0}%`, background: row.color }} /></b><strong>{items.length ? Math.round(row.count / items.length * 100) : 0}% · {row.count}</strong></div>)}</article>)}</section>
+    <h2>Novedades registradas</h2>
+    <div className="reports-print-table-wrap"><table><thead><tr><th>Fecha</th><th>Propiedad</th><th>Tipo</th><th>Importancia</th><th>Descripción</th><th>Inspector</th><th>Técnico</th><th>Supervisor</th><th>Estado</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{reportDate(item.occurredAt)}</td><td>{item.propertyName}</td><td>{item.type.name}</td><td>{reportImportanceLabel(item.importance)}</td><td>{item.description}{item.resolution && <small><b>HECHO:</b> {item.resolution}</small>}{item.attachments?.length > 0 && <small><b>ARCHIVOS:</b> {item.attachments.map((file) => file.fileName).join(', ')}</small>}</td><td>{item.inspector?.name ?? 'No aplica'}</td><td>{item.technician.name}</td><td>{item.supervisor.name}</td><td>{reportStatusLabel(item.status)}</td></tr>)}</tbody></table></div>
+    <section className="reports-print-records">{items.map((item) => <article key={item.id}>
+      <div className="reports-print-record-heading"><div><span>{reportDate(item.occurredAt)}</span><h3>{item.propertyName}</h3></div><b className={`reports-print-record-status reports-print-record-status-${item.status.toLowerCase()}`}>{reportStatusLabel(item.status)}</b></div>
+      <div className="reports-print-record-meta"><span><b>Tipo</b>{item.type.name}</span><span><b>Importancia</b>{reportImportanceLabel(item.importance)}</span><span><b>Técnico</b>{item.technician.name}</span><span><b>Supervisor</b>{item.supervisor.name}</span><span><b>Inspector</b>{item.inspector?.name ?? 'No aplica'}</span></div>
+      <p>{item.description}</p>
+      {item.resolution && <small><b>HECHO:</b> {item.resolution}</small>}
+      {item.attachments?.length > 0 && <small><b>ARCHIVOS:</b> {item.attachments.map((file) => file.fileName).join(', ')}</small>}
+    </article>)}</section>
+    <section className="reports-print-pending"><h2>▲ Pendientes al cierre</h2>{pending.length === 0 ? <p>No hay novedades pendientes en este período.</p> : <ul>{pending.map((item) => <li key={item.id}><b>{reportDate(item.occurredAt)} · {item.propertyName}</b> — {item.type.name} · {reportImportanceLabel(item.importance)}: {item.description}</li>)}</ul>}</section>
+    <footer>Blue Life Pool Service · Generado {new Date().toLocaleString('es-ES')}</footer>
+  </div>;
 }
