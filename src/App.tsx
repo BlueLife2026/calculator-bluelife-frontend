@@ -670,6 +670,10 @@ async function uploadWaterBodyPhotoFiles(
 
 function App() {
   const [activeArea, setActiveArea] = useState<AppArea>(initialAppArea);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return window.localStorage.getItem('bluelife-sidebar-collapsed') === 'true'; }
+    catch { return false; }
+  });
   const [estimateOpportunities, setEstimateOpportunities] = useState<EstimateOpportunity[]>([]);
   const [estimateSearch, setEstimateSearch] = useState('');
   const [estimateStatus, setEstimateStatus] = useState('ALL');
@@ -679,6 +683,13 @@ function App() {
   const [propertyTab, setPropertyTab] = useState<PropertyTab>('overview');
   const [properties, setProperties] =
     useState<Property[]>([]);
+
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+    try { window.localStorage.setItem('bluelife-sidebar-collapsed', String(sidebarCollapsed)); }
+    catch { /* The layout still works when browser storage is unavailable. */ }
+    return () => document.body.classList.remove('sidebar-collapsed');
+  }, [sidebarCollapsed]);
 
   const [deletedProperties, setDeletedProperties] =
     useState<Property[]>([]);
@@ -2317,8 +2328,9 @@ function App() {
       { id: 'finance', label: 'Finance', icon: '▤' },
     ];
 
-    return (
-      <aside className="app-sidebar" aria-label="BlueLife areas">
+    return (<>
+      <aside className={`app-sidebar${sidebarCollapsed ? ' app-sidebar-collapsed' : ''}`} aria-label="BlueLife areas">
+        <button className="sidebar-collapse-button" type="button" onClick={() => setSidebarCollapsed(true)} aria-label="Hide navigation and use full screen" title="Hide navigation">‹</button>
         <div className="sidebar-brand">
           <span>BL</span>
           <div><strong>BlueLife</strong><small>Internal App</small></div>
@@ -2341,7 +2353,8 @@ function App() {
           <div><strong>Blue Life Pools</strong><small>Team workspace</small></div>
         </div>
       </aside>
-    );
+      {sidebarCollapsed && <button className="sidebar-expand-button" type="button" onClick={() => setSidebarCollapsed(false)} aria-label="Show navigation" title="Show navigation">›</button>}
+    </>);
   }
 
   function renderEstimatesPage() {

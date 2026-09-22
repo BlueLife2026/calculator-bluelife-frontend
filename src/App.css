@@ -2587,7 +2587,10 @@ tbody tr:hover {
 /* BlueLife internal app shell */
 .app-page {
   padding-left: 276px;
+  transition: padding-left 0.22s ease;
 }
+
+body.sidebar-collapsed .app-page { padding-left: 32px; }
 
 .app-sidebar {
   position: fixed;
@@ -2602,6 +2605,51 @@ tbody tr:hover {
   background: #004c73;
   color: white;
   box-shadow: 8px 0 30px rgba(0, 76, 115, 0.12);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.app-sidebar.app-sidebar-collapsed {
+  transform: translateX(calc(-100% - 32px));
+  box-shadow: none;
+}
+
+.sidebar-collapse-button,
+.sidebar-expand-button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: #0877a4;
+  color: white;
+  cursor: pointer;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 5px 16px rgba(0, 76, 115, 0.24);
+}
+
+.sidebar-collapse-button {
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  width: 30px;
+  height: 48px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 0 10px 10px 0;
+  transform: translateY(-50%);
+}
+
+.sidebar-collapse-button:hover,
+.sidebar-expand-button:hover { background: #005a87; }
+
+.sidebar-expand-button {
+  position: fixed;
+  z-index: 45;
+  top: 50%;
+  left: 0;
+  width: 30px;
+  height: 52px;
+  border-radius: 0 10px 10px 0;
+  transform: translateY(-50%);
 }
 
 .sidebar-brand,
@@ -3962,7 +4010,11 @@ tbody tr:hover {
 
 @media (max-width: 800px) {
   .app-page { padding: 18px 12px calc(92px + env(safe-area-inset-bottom)); }
+  body.sidebar-collapsed .app-page { padding: 18px 12px calc(92px + env(safe-area-inset-bottom)); }
   .app-sidebar { top: auto; right: 0; width: auto; height: calc(78px + env(safe-area-inset-bottom)); box-sizing: border-box; flex-direction: row; padding: 6px 5px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0, 76, 115, 0.18); }
+  .app-sidebar.app-sidebar-collapsed { transform: none; box-shadow: 0 -8px 30px rgba(0, 76, 115, 0.18); }
+  .sidebar-collapse-button,
+  .sidebar-expand-button { display: none; }
   .sidebar-brand,
   .sidebar-footer { display: none; }
   .app-sidebar nav { display: grid; width: 100%; margin: 0; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
