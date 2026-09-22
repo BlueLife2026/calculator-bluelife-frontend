@@ -127,3 +127,35 @@
   .reports-print-pending { break-inside: avoid; }
   @page { size: A4 landscape; margin: 8mm; }
 }
+
+.reports-print-portal { display: none; }
+
+@media print {
+  body > #root { display: none !important; }
+  body > .reports-print-portal { display: block !important; visibility: visible !important; width: 100%; background: white; }
+  body > .reports-print-portal * { visibility: visible !important; }
+  .reports-print-portal .reports-print-sheet { display: block; width: 100%; max-width: none; margin: 0; padding: 0; overflow: visible; box-shadow: none; color: #183746; }
+  .reports-print-portal .reports-print-sheet > header { margin-bottom: 14px; padding-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+  .reports-print-portal .reports-print-sheet > header h1 { font-size: 28px; }
+  .reports-print-portal .reports-print-sheet > header p { font-size: 12px; }
+  .reports-print-portal .reports-print-kpis { break-inside: avoid; page-break-inside: avoid; }
+  .reports-print-portal .reports-print-kpis strong { font-size: 32px; }
+  .reports-print-portal .reports-print-kpis span { font-size: 9px; }
+  .reports-print-portal .reports-print-charts { break-inside: avoid; page-break-inside: avoid; }
+  .reports-print-portal .reports-print-charts article { min-height: 0; padding: 12px; }
+  .reports-print-portal .reports-print-charts h3 { font-size: 10px; }
+  .reports-print-portal .reports-print-charts span,
+  .reports-print-portal .reports-print-charts article > div > strong { font-size: 10px; }
+  .reports-print-portal .reports-print-table-wrap { overflow: visible; }
+  .reports-print-portal .reports-print-sheet table { width: 100%; min-width: 0; table-layout: fixed; font-size: 10.5px; }
+  .reports-print-portal .reports-print-sheet th { padding: 8px 5px; font-size: 9px; }
+  .reports-print-portal .reports-print-sheet td { padding: 8px 5px; font-size: 10.5px; line-height: 1.4; }
+  .reports-print-portal .reports-print-sheet td small { font-size: 9.5px; }
+  .reports-print-portal .reports-print-sheet tr { break-inside: avoid; page-break-inside: avoid; }
+  .reports-print-portal .reports-print-sheet thead { display: table-header-group; }
+  .reports-print-portal .reports-print-pending { break-inside: auto; page-break-inside: auto; padding: 14px 18px; }
+  .reports-print-portal .reports-print-pending h2 { font-size: 14px; }
+  .reports-print-portal .reports-print-pending p,
+  .reports-print-portal .reports-print-pending li { font-size: 10px; }
+  .reports-print-portal .reports-print-sheet footer { font-size: 9px; }
+}

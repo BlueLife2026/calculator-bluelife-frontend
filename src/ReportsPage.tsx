@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { API_URL } from './api';
 import './ReportsPage.css';
 
@@ -78,6 +79,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
   const [reportDay, setReportDay] = useState(today());
   const [reportFrom, setReportFrom] = useState(monthStart());
   const [reportTo, setReportTo] = useState(today());
+  const [printing, setPrinting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -86,6 +88,13 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
     finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (!printing) return undefined;
+    const afterPrint = () => setPrinting(false);
+    const timer = window.setTimeout(() => window.print(), 80);
+    window.addEventListener('afterprint', afterPrint, { once: true });
+    return () => { window.clearTimeout(timer); window.removeEventListener('afterprint', afterPrint); };
+  }, [printing]);
 
   const people = (role: Role) => dashboard.people.filter((person) => person.role === role);
   const supervisors = people('SUPERVISOR');
@@ -312,7 +321,8 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
     </div>}
     {solving&&<div className="modal-backdrop"><section className="property-modal reports-solve-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>CLOSE REPORT</span><h2>{solving.propertyName}</h2></div><button onClick={()=>setSolving(null)} aria-label="Close">×</button></div><div className="reports-solve-summary"><b>{solving.type.name} · {importanceLabel(solving.importance)}</b><p>{solving.description}</p><small>{solving.technician.name} · Supervisor: {solving.supervisor.name}</small></div><form onSubmit={solveIncident}><label><span>What was done?</span><textarea required rows={5} value={resolution} onChange={(event)=>setResolution(event.target.value)} placeholder="Describe the completed work…" /></label><label className="reports-confirm"><input type="checkbox" checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)} /> I confirm that this report has been resolved.</label><div className="modal-actions"><button type="button" className="reports-button reports-button-ghost" onClick={()=>setSolving(null)}>Cancel</button><button className="reports-button reports-button-solved" disabled={!confirmed||!resolution.trim()||busy}>Mark as solved</button></div></form></section></div>}
     {settingsOpen&&<div className="modal-backdrop"><section className="property-modal reports-settings-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>REPORTS SETUP</span><h2>Configuration lists</h2></div><button onClick={()=>setSettingsOpen(false)} aria-label="Close">×</button></div><p className="reports-settings-intro">Names live here, not in the form. Renaming an item updates the history automatically.</p><div className="reports-settings-tabs">{(['supervisor','inspector','technician','type'] as const).map((kind)=><button key={kind} className={configKind===kind?'active':''} onClick={()=>setConfigKind(kind)}>{kind[0].toUpperCase()+kind.slice(1)}s</button>)}</div><form className="reports-add-option" onSubmit={saveOption}><input required value={newOption} onChange={(event)=>setNewOption(event.target.value)} placeholder={`Add ${configKind}`} /><button className="reports-button reports-button-primary" disabled={busy}>Add</button></form><div className="reports-option-list">{configItems.map((item)=><div key={item.id} className="reports-option-row"><span><i style={{background:item.color||'#9eb1bd'}} />{item.name}</span>{configKind==='technician'&&isPerson(item)&&<select aria-label={`Default supervisor for ${item.name}`} value={item.defaultSupervisorId||''} onChange={(event)=>void setDefaultSupervisor(item,event.target.value)}><option value="">No default supervisor</option>{supervisors.map((supervisor)=><option key={supervisor.id} value={supervisor.id}>{supervisor.name}</option>)}</select>}<div><button onClick={()=>void renameOption(item)}>Edit</button><button className="danger" onClick={()=>void deleteOption(item)}>Remove</button></div></div>)}{configItems.length===0&&<p className="reports-empty">No items yet.</p>}</div></section></div>}
-    {reportOpen&&<div className="modal-backdrop reports-report-backdrop"><section className="reports-report-dialog" role="dialog" aria-modal="true"><div className="reports-report-controls"><div><button className={reportMode==='DAY'?'active':''} onClick={()=>setReportMode('DAY')}>Un día</button><button className={reportMode==='RANGE'?'active':''} onClick={()=>setReportMode('RANGE')}>Rango de fechas</button>{reportMode==='DAY'?<input type="date" value={reportDay} onChange={(event)=>setReportDay(event.target.value)} />:<><input type="date" value={reportFrom} onChange={(event)=>setReportFrom(event.target.value)} /><span>al</span><input type="date" value={reportTo} onChange={(event)=>setReportTo(event.target.value)} /></>}</div><div><button onClick={()=>window.print()}>PDF</button><button onClick={downloadExcelReport}>Excel</button><button onClick={()=>exportCsv(reportItems)}>CSV</button><button className="reports-report-close" onClick={()=>setReportOpen(false)}>×</button></div></div><ReportSheet title={reportTitle} subtitle={reportSubtitle} items={reportItems} distribution={distribution} /></section></div>}
+    {reportOpen&&<div className="modal-backdrop reports-report-backdrop"><section className="reports-report-dialog" role="dialog" aria-modal="true"><div className="reports-report-controls"><div><button className={reportMode==='DAY'?'active':''} onClick={()=>setReportMode('DAY')}>Un día</button><button className={reportMode==='RANGE'?'active':''} onClick={()=>setReportMode('RANGE')}>Rango de fechas</button>{reportMode==='DAY'?<input type="date" value={reportDay} onChange={(event)=>setReportDay(event.target.value)} />:<><input type="date" value={reportFrom} onChange={(event)=>setReportFrom(event.target.value)} /><span>al</span><input type="date" value={reportTo} onChange={(event)=>setReportTo(event.target.value)} /></>}</div><div><button onClick={()=>setPrinting(true)}>PDF</button><button onClick={downloadExcelReport}>Excel</button><button onClick={()=>exportCsv(reportItems)}>CSV</button><button className="reports-report-close" onClick={()=>setReportOpen(false)}>×</button></div></div><ReportSheet title={reportTitle} subtitle={reportSubtitle} items={reportItems} distribution={distribution} /></section></div>}
+    {printing&&createPortal(<div className="reports-print-portal"><ReportSheet title={reportTitle} subtitle={reportSubtitle} items={reportItems} distribution={distribution} /></div>, document.body)}
   </div>;
 
   function renderRow(incident: Incident) {
