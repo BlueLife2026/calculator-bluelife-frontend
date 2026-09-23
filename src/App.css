@@ -2957,6 +2957,16 @@ body.sidebar-collapsed .app-page { padding-left: 32px; }
 .history-record-subject { font-size: 11px; color: #526b78; margin: 12px 0 16px; }
 .history-record-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .history-record-summary > .history-info-item { padding: 9px; background: #f4f7fa; border-radius: 8px; }
+.history-report-record { border-left-color: #58b8ca; }
+.history-report-status { flex: 0 0 auto; border-radius: 999px; padding: 5px 9px; font-size: 9px; font-weight: 800; }
+.history-report-status-pending { background: #fff0e7; color: #b85f31; }
+.history-report-status-solved { background: #e5f6eb; color: #287c50; }
+.history-report-resolution { margin-top: 12px; border-radius: 8px; padding: 10px 12px; background: #edf8f1; }
+.history-report-resolution strong { color: #287c50; font-size: 10px; }
+.history-report-resolution p { margin: 5px 0 0; color: #355d49; font-size: 11px; line-height: 1.5; white-space: pre-wrap; }
+.history-report-files { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 10px; }
+.history-report-files > strong { color: #526b78; font-size: 10px; }
+.history-report-files a { max-width: 100%; overflow: hidden; border-radius: 6px; padding: 5px 7px; background: #e8f7fa; color: #087392; font-size: 9px; font-weight: 750; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .history-record-summary > .history-estimate-status { background: #edf7fc; }
 .history-record-summary > .history-estimate-number { background: #075477; }
 .history-estimate-number dt { color: #d2efff; }
