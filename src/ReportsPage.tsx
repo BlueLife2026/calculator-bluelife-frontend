@@ -146,7 +146,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
     if (inspectorFilter && inspectorFilter !== 'none' && incident.inspector?.id !== inspectorFilter) return false;
     if (statusFilter && incident.status !== statusFilter) return false;
     return true;
-  }).sort((a, b) => dateKey(b.occurredAt).localeCompare(dateKey(a.occurredAt)) || (a.status === b.status ? 0 : a.status === 'PENDING' ? -1 : 1)), [dashboard.incidents, quickView, search, periodMode, day, from, to, month, propertyFilter, typeFilter, importanceFilter, technicianFilter, supervisorFilter, inspectorFilter, statusFilter]);
+  }).sort((a, b) => (a.status === b.status ? 0 : a.status === 'PENDING' ? -1 : 1) || dateKey(b.occurredAt).localeCompare(dateKey(a.occurredAt))), [dashboard.incidents, quickView, search, periodMode, day, from, to, month, propertyFilter, typeFilter, importanceFilter, technicianFilter, supervisorFilter, inspectorFilter, statusFilter]);
 
   const quickCounts = {
     ALL: dashboard.incidents.length,
