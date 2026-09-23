@@ -145,7 +145,18 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
       <div className="history-property-grid">{displayed.map((item) => {
         const records = index.byProperty.get(item.id) || [];
         const propertyReports = reportIndex.byProperty.get(item.id) || [];
-        return <button className="history-property-card" key={item.id} onClick={() => select(item.id)}><div className="history-property-card-top"><span className="history-property-avatar" aria-hidden="true">{item.name.slice(0, 2).toUpperCase()}</span><span className="history-lifecycle">{label(item.lifecycleStatus)}</span></div><h2>{item.name}</h2><p>{[item.addressLine1, item.city, item.state].filter(Boolean).join(', ') || 'Address not assigned'}</p><small>{item.managementCompany?.name || 'Management company not assigned'}</small><div className="history-property-card-footer"><span>{loading ? 'Loading…' : `${propertyReports.length} Reports · ${records.length} Health`}</span><strong>View record →</strong></div></button>;
+        const pendingReports = propertyReports.filter((report) => report.status === 'PENDING').length;
+        const upcomingInspections = records.filter((ticket) => {
+          const deadline = healthDate(ticket.healthData?.['Fecha Límite'] || '');
+          return ticket.status !== 'CLOSED' && Boolean(deadline) && daysUntilInspection(deadline, clock) >= 0;
+        }).length;
+        return <button className="history-property-card" key={item.id} onClick={() => select(item.id)}>
+          {(pendingReports > 0 || upcomingInspections > 0) && <span className="history-property-notifications">
+            {pendingReports > 0 && <span className="history-notification history-notification-reports" title={`${pendingReports} pending report${pendingReports === 1 ? '' : 's'}`} aria-label={`${pendingReports} pending reports`}>{pendingReports}</span>}
+            {upcomingInspections > 0 && <span className="history-notification history-notification-health" title={`${upcomingInspections} upcoming Health inspection${upcomingInspections === 1 ? '' : 's'}`} aria-label={`${upcomingInspections} upcoming Health inspections`}>{upcomingInspections}</span>}
+          </span>}
+          <div className="history-property-card-top"><span className="history-property-avatar" aria-hidden="true">{item.name.slice(0, 2).toUpperCase()}</span><span className="history-lifecycle">{label(item.lifecycleStatus)}</span></div><h2>{item.name}</h2><p>{[item.addressLine1, item.city, item.state].filter(Boolean).join(', ') || 'Address not assigned'}</p><small>{item.managementCompany?.name || 'Management company not assigned'}</small><div className="history-property-card-footer"><span>{loading ? 'Loading…' : `${propertyReports.length} Reports · ${records.length} Health`}</span><strong>View record →</strong></div>
+        </button>;
       })}</div>{displayed.length === 0 && <p className="history-empty">{properties.length === 0 ? 'No Commercial properties registered yet.' : 'No properties match your search.'}</p>}
     </> : <>
       <div className="history-property-navigation"><button className="history-back-button" onClick={() => setSelectedId(null)}>← All properties</button><label>Property<select value={property.id} onChange={(event) => select(event.target.value)}>{properties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
