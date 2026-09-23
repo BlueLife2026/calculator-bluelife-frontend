@@ -2944,6 +2944,9 @@ body.sidebar-collapsed .app-page { padding-left: 32px; }
 .history-info-item { min-width: 0; }
 .history-info-item dt { font-size: 9px; text-transform: uppercase; color: #667085; font-weight: 700; margin-bottom: 5px; }
 .history-info-item dd { margin: 0; font-size: 12px; line-height: 1.5; color: #344054; white-space: pre-wrap; overflow-wrap: anywhere; }
+.history-sharepoint-field { grid-column: 1 / -1; }
+.history-sharepoint-field a { display: inline-flex; border-radius: 8px; padding: 8px 11px; background: #e8f7fa; color: #075477; font-weight: 800; text-decoration: none; }
+.history-sharepoint-field a:hover { background: #d8f0f5; }
 .history-side-panels { display: grid; gap: 16px; align-content: start; }
 .history-contact { display: grid; gap: 5px; border-bottom: 1px solid #edf2f5; padding: 12px 0; font-size: 11px; overflow-wrap: anywhere; }
 .history-contact:last-child { border-bottom: 0; }

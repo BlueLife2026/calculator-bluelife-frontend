@@ -12,15 +12,6 @@ import './App.css';
 type AppArea = 'home' | 'commercial' | 'chemicals' | 'health' | 'reports' | 'estimates' | 'operations' | 'finance';
 type PropertyTab = 'overview' | 'commercial' | 'estimates' | 'contracts';
 
-const appAreas: AppArea[] = ['home', 'commercial', 'chemicals', 'health', 'reports', 'estimates', 'operations', 'finance'];
-
-function initialAppArea(): AppArea {
-  const requestedArea = new URLSearchParams(window.location.search).get('area');
-  return appAreas.includes(requestedArea as AppArea)
-    ? requestedArea as AppArea
-    : 'commercial';
-}
-
 type EstimateOpportunity = {
   title: string;
   propertyLink: string;
@@ -669,7 +660,7 @@ async function uploadWaterBodyPhotoFiles(
 }
 
 function App() {
-  const [activeArea, setActiveArea] = useState<AppArea>(initialAppArea);
+  const [activeArea, setActiveArea] = useState<AppArea>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return window.localStorage.getItem('bluelife-sidebar-collapsed') === 'true'; }
     catch { return false; }
