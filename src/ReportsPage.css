@@ -209,3 +209,10 @@
   .reports-print-portal .reports-print-sheet thead { display: table-header-group; }
   .reports-print-portal .reports-print-pending { margin-top: 16px; padding: 12px 16px; }
 }
+
+/* Reports hierarchy: keep secondary and tertiary headings high-contrast. */
+.reports-page h2,
+.reports-page h3,
+.reports-page h4,
+.reports-page h5,
+.reports-page h6 { color: #111820; }
