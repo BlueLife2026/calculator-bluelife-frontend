@@ -21,6 +21,7 @@ type PropertyReport = {
   inspector?: { name: string } | null; attachments?: Array<{ id: string; fileName: string; sharepointWebUrl: string }>;
 };
 type Tab = 'overview' | 'general' | 'reports' | 'health';
+type AlertFilter = 'all' | 'reports' | 'health';
 const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['general', 'General information'], ['reports', 'Reports'], ['health', 'Health Department']];
 const checklistFields = [
   ['Quimico', 'Chemical'], ['Feeders', 'Feeders'], ['Main drain', 'Main drain'], ['Flow meter /  Flow rate', 'Flow meter / Flow rate'],
@@ -43,6 +44,7 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [search, setSearch] = useState('');
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>('all');
   const [tickets, setTickets] = useState<PropertyHealthTicket[]>([]);
   const [reports, setReports] = useState<PropertyReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,28 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
     for (const rows of byProperty.values()) rows.sort((a, b) => (a.status === b.status ? 0 : a.status === 'PENDING' ? -1 : 1) || b.occurredAt.localeCompare(a.occurredAt));
     return { byProperty, unmatched };
   }, [properties, reports]);
-  const displayed = useMemo(() => properties.filter((property) => propertyNameKey([property.name, property.addressLine1, property.city, property.managementCompany?.name].filter(Boolean).join(' ')).includes(propertyNameKey(search))).slice().sort((a, b) => a.name.localeCompare(b.name)), [properties, search]);
+  const propertyAlerts = useMemo(() => {
+    const alerts = new Map<string, { pendingReports: number; upcomingInspections: number }>();
+    for (const item of properties) {
+      const pendingReports = (reportIndex.byProperty.get(item.id) || []).filter((report) => report.status === 'PENDING').length;
+      const upcomingInspections = (index.byProperty.get(item.id) || []).filter((ticket) => {
+        const deadline = healthDate(ticket.healthData?.['Fecha Límite'] || '');
+        return ticket.status !== 'CLOSED' && Boolean(deadline) && daysUntilInspection(deadline, clock) >= 0;
+      }).length;
+      alerts.set(item.id, { pendingReports, upcomingInspections });
+    }
+    return alerts;
+  }, [clock, index.byProperty, properties, reportIndex.byProperty]);
+  const alertTotals = useMemo(() => Array.from(propertyAlerts.values()).reduce((totals, alerts) => ({
+    pendingReports: totals.pendingReports + alerts.pendingReports,
+    upcomingInspections: totals.upcomingInspections + alerts.upcomingInspections,
+  }), { pendingReports: 0, upcomingInspections: 0 }), [propertyAlerts]);
+  const displayed = useMemo(() => properties.filter((property) => {
+    const matchesSearch = propertyNameKey([property.name, property.addressLine1, property.city, property.managementCompany?.name].filter(Boolean).join(' ')).includes(propertyNameKey(search));
+    const alerts = propertyAlerts.get(property.id) || { pendingReports: 0, upcomingInspections: 0 };
+    const matchesAlert = alertFilter === 'all' || (alertFilter === 'reports' ? alerts.pendingReports > 0 : alerts.upcomingInspections > 0);
+    return matchesSearch && matchesAlert;
+  }).slice().sort((a, b) => a.name.localeCompare(b.name)), [alertFilter, properties, propertyAlerts, search]);
   const property = properties.find((item) => item.id === selectedId);
   const history = property ? index.byProperty.get(property.id) || [] : [];
   const reportHistory = property ? reportIndex.byProperty.get(property.id) || [] : [];
@@ -136,20 +159,25 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
     </article>;
   }
   return <div className="page app-page property-history-page">{sidebar}
-    <header className="area-page-header"><div><span className="area-eyebrow">PROPERTY RECORDS</span><h1>{property ? property.name : 'Property history'}</h1><p className="history-header-description">{property ? 'One property. A shared history across your team.' : 'The Commercial property directory, with a shared record for every property.'}</p></div><button className="secondary-button" onClick={() => setRefresh((value) => value + 1)}>Refresh history</button></header>
+    <header className="area-page-header history-page-header">
+      <div><span className="area-eyebrow">PROPERTY RECORDS</span><h1>{property ? property.name : 'Property history'}</h1>{property && <p className="history-header-description">One property. A shared history across your team.</p>}</div>
+      <div className="history-header-actions">
+        {!property && <div className="history-alert-filters" aria-label="Filter properties by notification">
+          <button type="button" className={`history-alert-filter history-alert-filter-reports${alertFilter === 'reports' ? ' history-alert-filter-active' : ''}`} aria-pressed={alertFilter === 'reports'} aria-label={`${alertTotals.pendingReports} pending reports. Filter properties`} title="Properties with pending reports" onClick={() => setAlertFilter((current) => current === 'reports' ? 'all' : 'reports')}>{alertTotals.pendingReports}</button>
+          <button type="button" className={`history-alert-filter history-alert-filter-health${alertFilter === 'health' ? ' history-alert-filter-active' : ''}`} aria-pressed={alertFilter === 'health'} aria-label={`${alertTotals.upcomingInspections} upcoming Health Department inspections. Filter properties`} title="Properties with upcoming Health Department inspections" onClick={() => setAlertFilter((current) => current === 'health' ? 'all' : 'health')}>{alertTotals.upcomingInspections}</button>
+        </div>}
+        <button className="secondary-button history-refresh-button" onClick={() => setRefresh((value) => value + 1)}>Refresh history</button>
+      </div>
+    </header>
     {error && <div role="alert" className="history-error">{error} <button onClick={() => setRefresh((value) => value + 1)}>Retry</button></div>}
     {!property ? <>
-      <div className="history-directory-heading"><div><strong>{properties.length} properties</strong><span>{loading ? 'Loading property history…' : `${totalReportsLinked} linked Reports · ${totalLinked} linked Health records`}</span></div><input type="search" aria-label="Search properties" placeholder="Search property, address or management company" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+      <div className="history-directory-heading"><div><strong>{displayed.length} {displayed.length === 1 ? 'property' : 'properties'}</strong><span>{loading ? 'Loading property history…' : `${totalReportsLinked} linked Reports · ${totalLinked} linked Health records`}</span></div><input type="search" aria-label="Search properties" placeholder="Search property, address or management company" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
       {index.unmatched > 0 && !loading && <div className="history-link-notice">{index.unmatched} Health records need a matching Commercial property name. They are not assigned automatically to similar names. <button onClick={onOpenHealth}>Review Health tickets →</button></div>}
       {reportIndex.unmatched > 0 && !loading && <div className="history-link-notice">{reportIndex.unmatched} Reports need a unique matching property name and remain available in the main Reports table.</div>}
       <div className="history-property-grid">{displayed.map((item) => {
         const records = index.byProperty.get(item.id) || [];
         const propertyReports = reportIndex.byProperty.get(item.id) || [];
-        const pendingReports = propertyReports.filter((report) => report.status === 'PENDING').length;
-        const upcomingInspections = records.filter((ticket) => {
-          const deadline = healthDate(ticket.healthData?.['Fecha Límite'] || '');
-          return ticket.status !== 'CLOSED' && Boolean(deadline) && daysUntilInspection(deadline, clock) >= 0;
-        }).length;
+        const { pendingReports, upcomingInspections } = propertyAlerts.get(item.id) || { pendingReports: 0, upcomingInspections: 0 };
         return <button className="history-property-card" key={item.id} onClick={() => select(item.id)}>
           {(pendingReports > 0 || upcomingInspections > 0) && <span className="history-property-notifications">
             {pendingReports > 0 && <span className="history-notification history-notification-reports" title={`${pendingReports} pending report${pendingReports === 1 ? '' : 's'}`} aria-label={`${pendingReports} pending reports`}>{pendingReports}</span>}
@@ -157,7 +185,7 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
           </span>}
           <div className="history-property-card-top"><span className="history-property-avatar" aria-hidden="true">{item.name.slice(0, 2).toUpperCase()}</span><span className="history-lifecycle">{label(item.lifecycleStatus)}</span></div><h2>{item.name}</h2><p>{[item.addressLine1, item.city, item.state].filter(Boolean).join(', ') || 'Address not assigned'}</p><small>{item.managementCompany?.name || 'Management company not assigned'}</small><div className="history-property-card-footer"><span>{loading ? 'Loading…' : `${propertyReports.length} Reports · ${records.length} Health`}</span><strong>View record →</strong></div>
         </button>;
-      })}</div>{displayed.length === 0 && <p className="history-empty">{properties.length === 0 ? 'No Commercial properties registered yet.' : 'No properties match your search.'}</p>}
+      })}</div>{displayed.length === 0 && <p className="history-empty">{properties.length === 0 ? 'No Commercial properties registered yet.' : alertFilter === 'reports' ? 'No properties have pending reports.' : alertFilter === 'health' ? 'No properties have upcoming Health Department inspections.' : 'No properties match your search.'}</p>}
     </> : <>
       <div className="history-property-navigation"><button className="history-back-button" onClick={() => setSelectedId(null)}>← All properties</button><label>Property<select value={property.id} onChange={(event) => select(event.target.value)}>{properties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
       <nav className="history-tabs" aria-label="Property sections">{tabs.map(([key, title]) => <button key={key} aria-current={tab === key ? 'page' : undefined} className={tab === key ? 'history-tab-active' : ''} onClick={() => setTab(key)}>{title}{key === 'reports' && <span>{reportHistory.length}</span>}{key === 'health' && <span>{history.length}</span>}</button>)}</nav>
