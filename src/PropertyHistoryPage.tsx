@@ -111,7 +111,7 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
       alerts.set(item.id, { pendingReports, healthRecords });
     }
     return alerts;
-  }, [clock, index.byProperty, properties, reportIndex.byProperty]);
+  }, [index.byProperty, properties, reportIndex.byProperty]);
   const alertTotals = useMemo(() => Array.from(propertyAlerts.values()).reduce((totals, alerts) => ({
     pendingReports: totals.pendingReports + alerts.pendingReports,
     healthRecords: totals.healthRecords + alerts.healthRecords,
