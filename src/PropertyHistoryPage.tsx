@@ -107,7 +107,7 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
     const alerts = new Map<string, { pendingReports: number; healthRecords: number }>();
     for (const item of properties) {
       const pendingReports = (reportIndex.byProperty.get(item.id) || []).filter((report) => report.status === 'PENDING').length;
-      const healthRecords = (index.byProperty.get(item.id) || []).length;
+      const healthRecords = (index.byProperty.get(item.id) || []).filter((ticket) => ticket.status !== 'CLOSED').length;
       alerts.set(item.id, { pendingReports, healthRecords });
     }
     return alerts;
