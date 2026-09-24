@@ -2951,6 +2951,7 @@ body.sidebar-collapsed .app-page { padding-left: 32px; }
 .history-metrics strong { font-size: 24px; color: #075477; }
 .history-overview-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
 .history-panel { min-width: 0; padding: 20px; border: 1px solid var(--bluelife-border); border-radius: 16px; background: white; }
+.property-history-page > .history-panel + .history-panel { margin-top: 18px; }
 .history-panel h2 { margin: 0 0 16px; font-size: 16px; color: #075477; }
 .history-panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 18px; }
 .history-panel-heading h2 { margin-bottom: 6px; }
