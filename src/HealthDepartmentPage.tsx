@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { API_URL } from './api';
 import { daysUntilInspection, englishChemical, englishHealthStatus, estimateStatusOptions, healthDate, inspectionAlertDate, inspectionSignal } from './healthDisplay';
@@ -59,8 +59,8 @@ export function HealthDepartmentPage({ sidebar, properties, unassignedOnly = fal
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState(() => sessionStorage.getItem('bluelife-health-admin-token') || localStorage.getItem('bluelife-chemicals-owner-token') || '');
-  async function load() { const rows = await request('/health-department/tickets'); const commercialPropertyNames = new Set(properties.map((property) => property.name)); setTickets(rows.map((row: Record<string, any>) => mapTicket(row, commercialPropertyNames))); }
-  useEffect(() => { void load().catch((error: Error) => setMessage(error.message)); }, [properties]);
+  const load = useCallback(async () => { const rows = await request('/health-department/tickets'); const commercialPropertyNames = new Set(properties.map((property) => property.name)); setTickets(rows.map((row: Record<string, any>) => mapTicket(row, commercialPropertyNames))); }, [properties]);
+  useEffect(() => { void load().catch((error: Error) => setMessage(error.message)); }, [load]);
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 60000);
     return () => window.clearInterval(timer);
@@ -150,7 +150,7 @@ export function HealthDepartmentPage({ sidebar, properties, unassignedOnly = fal
   return <div className="page app-page health-page">{sidebar}
     <header className="area-page-header health-header"><div><span className="area-eyebrow">COMPLIANCE & SERVICE</span><h1>Health Department</h1></div><div className="health-header-actions"><button className="secondary-button" disabled={busy} onClick={() => void sync()}>Sync</button><button className="primary-button" onClick={newTicket}>+ New ticket</button></div></header>
     {message && <p role="status" className="health-sync-message">{message}</p>}
-    {unassignedOnly && <div className="health-unassigned-banner"><span>Showing tickets without a Commercial property assignment.</span><button type="button" onClick={onClearUnassignedFilter}>Show all tickets</button></div>}
+    {unassignedOnly && <div className="health-unassigned-banner"><span>Showing {filtered.length} tickets without a Commercial property assignment.</span><button type="button" onClick={onClearUnassignedFilter}>Show all tickets</button></div>}
     {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} reinspections within 10 days</strong><p>Based only on assigned reinspection deadlines.</p></div></div>}
     <div className="health-main-grid">
       <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><div className="health-ticket-filters"><input type="search" aria-label="Search by property name" placeholder="Search property" value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} /><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div></div>
