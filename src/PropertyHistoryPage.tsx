@@ -104,25 +104,22 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
     return { byProperty, unmatched };
   }, [properties, reports]);
   const propertyAlerts = useMemo(() => {
-    const alerts = new Map<string, { pendingReports: number; upcomingInspections: number }>();
+    const alerts = new Map<string, { pendingReports: number; healthRecords: number }>();
     for (const item of properties) {
       const pendingReports = (reportIndex.byProperty.get(item.id) || []).filter((report) => report.status === 'PENDING').length;
-      const upcomingInspections = (index.byProperty.get(item.id) || []).filter((ticket) => {
-        const deadline = healthDate(ticket.healthData?.['Fecha Límite'] || '');
-        return ticket.status !== 'CLOSED' && Boolean(deadline) && daysUntilInspection(deadline, clock) >= 0;
-      }).length;
-      alerts.set(item.id, { pendingReports, upcomingInspections });
+      const healthRecords = (index.byProperty.get(item.id) || []).length;
+      alerts.set(item.id, { pendingReports, healthRecords });
     }
     return alerts;
   }, [clock, index.byProperty, properties, reportIndex.byProperty]);
   const alertTotals = useMemo(() => Array.from(propertyAlerts.values()).reduce((totals, alerts) => ({
     pendingReports: totals.pendingReports + alerts.pendingReports,
-    upcomingInspections: totals.upcomingInspections + alerts.upcomingInspections,
-  }), { pendingReports: 0, upcomingInspections: 0 }), [propertyAlerts]);
+    healthRecords: totals.healthRecords + alerts.healthRecords,
+  }), { pendingReports: 0, healthRecords: 0 }), [propertyAlerts]);
   const displayed = useMemo(() => properties.filter((property) => {
     const matchesSearch = propertyNameKey([property.name, property.addressLine1, property.city, property.managementCompany?.name].filter(Boolean).join(' ')).includes(propertyNameKey(search));
-    const alerts = propertyAlerts.get(property.id) || { pendingReports: 0, upcomingInspections: 0 };
-    const matchesAlert = alertFilter === 'all' || (alertFilter === 'reports' ? alerts.pendingReports > 0 : alerts.upcomingInspections > 0);
+    const alerts = propertyAlerts.get(property.id) || { pendingReports: 0, healthRecords: 0 };
+    const matchesAlert = alertFilter === 'all' || (alertFilter === 'reports' ? alerts.pendingReports > 0 : alerts.healthRecords > 0);
     return matchesSearch && matchesAlert;
   }).slice().sort((a, b) => a.name.localeCompare(b.name)), [alertFilter, properties, propertyAlerts, search]);
   const property = properties.find((item) => item.id === selectedId);
@@ -164,7 +161,7 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
       <div className="history-header-actions">
         {!property && <div className="history-alert-filters" aria-label="Filter properties by notification">
           <button type="button" className={`history-alert-filter history-alert-filter-reports${alertFilter === 'reports' ? ' history-alert-filter-active' : ''}`} aria-pressed={alertFilter === 'reports'} aria-label={`${alertTotals.pendingReports} pending reports. Filter properties`} title="Properties with pending reports" onClick={() => setAlertFilter((current) => current === 'reports' ? 'all' : 'reports')}>{alertTotals.pendingReports}</button>
-          <button type="button" className={`history-alert-filter history-alert-filter-health${alertFilter === 'health' ? ' history-alert-filter-active' : ''}`} aria-pressed={alertFilter === 'health'} aria-label={`${alertTotals.upcomingInspections} upcoming Health Department inspections. Filter properties`} title="Properties with upcoming Health Department inspections" onClick={() => setAlertFilter((current) => current === 'health' ? 'all' : 'health')}>{alertTotals.upcomingInspections}</button>
+          <button type="button" className={`history-alert-filter history-alert-filter-health${alertFilter === 'health' ? ' history-alert-filter-active' : ''}`} aria-pressed={alertFilter === 'health'} aria-label={`${alertTotals.healthRecords} Health records. Filter properties`} title="Properties with Health Department records" onClick={() => setAlertFilter((current) => current === 'health' ? 'all' : 'health')}>{alertTotals.healthRecords}</button>
         </div>}
         <button className="secondary-button history-refresh-button" onClick={() => setRefresh((value) => value + 1)}>Refresh history</button>
       </div>
@@ -177,15 +174,15 @@ export function PropertyHistoryPage({ sidebar, properties, onOpenHealth }: { sid
       <div className="history-property-grid">{displayed.map((item) => {
         const records = index.byProperty.get(item.id) || [];
         const propertyReports = reportIndex.byProperty.get(item.id) || [];
-        const { pendingReports, upcomingInspections } = propertyAlerts.get(item.id) || { pendingReports: 0, upcomingInspections: 0 };
+        const { pendingReports, healthRecords } = propertyAlerts.get(item.id) || { pendingReports: 0, healthRecords: 0 };
         return <button className="history-property-card" key={item.id} onClick={() => select(item.id)}>
-          {(pendingReports > 0 || upcomingInspections > 0) && <span className="history-property-notifications">
+          {(pendingReports > 0 || healthRecords > 0) && <span className="history-property-notifications">
             {pendingReports > 0 && <span className="history-notification history-notification-reports" title={`${pendingReports} pending report${pendingReports === 1 ? '' : 's'}`} aria-label={`${pendingReports} pending reports`}>{pendingReports}</span>}
-            {upcomingInspections > 0 && <span className="history-notification history-notification-health" title={`${upcomingInspections} upcoming Health inspection${upcomingInspections === 1 ? '' : 's'}`} aria-label={`${upcomingInspections} upcoming Health inspections`}>{upcomingInspections}</span>}
+            {healthRecords > 0 && <span className="history-notification history-notification-health" title={`${healthRecords} Health record${healthRecords === 1 ? '' : 's'}`} aria-label={`${healthRecords} Health records`}>{healthRecords}</span>}
           </span>}
           <div className="history-property-card-top"><span className="history-property-avatar" aria-hidden="true">{item.name.slice(0, 2).toUpperCase()}</span><span className="history-lifecycle">{label(item.lifecycleStatus)}</span></div><h2>{item.name}</h2><p>{[item.addressLine1, item.city, item.state].filter(Boolean).join(', ') || 'Address not assigned'}</p><small>{item.managementCompany?.name || 'Management company not assigned'}</small><div className="history-property-card-footer"><span>{loading ? 'Loading…' : `${propertyReports.length} Reports · ${records.length} Health`}</span><strong>View record →</strong></div>
         </button>;
-      })}</div>{displayed.length === 0 && <p className="history-empty">{properties.length === 0 ? 'No Commercial properties registered yet.' : alertFilter === 'reports' ? 'No properties have pending reports.' : alertFilter === 'health' ? 'No properties have upcoming Health Department inspections.' : 'No properties match your search.'}</p>}
+      })}</div>{displayed.length === 0 && <p className="history-empty">{properties.length === 0 ? 'No Commercial properties registered yet.' : alertFilter === 'reports' ? 'No properties have pending reports.' : alertFilter === 'health' ? 'No properties have Health Department records.' : 'No properties match your search.'}</p>}
     </> : <>
       <div className="history-property-navigation"><button className="history-back-button" onClick={() => setSelectedId(null)}>← All properties</button><label>Property<select value={property.id} onChange={(event) => select(event.target.value)}>{properties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
       <nav className="history-tabs" aria-label="Property sections">{tabs.map(([key, title]) => <button key={key} aria-current={tab === key ? 'page' : undefined} className={tab === key ? 'history-tab-active' : ''} onClick={() => setTab(key)}>{title}{key === 'reports' && <span>{reportHistory.length}</span>}{key === 'health' && <span>{history.length}</span>}</button>)}</nav>
