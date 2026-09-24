@@ -29,6 +29,7 @@ function mapTicket(row: Record<string, any>): Ticket {
   return { id: row.ticketNumber, subject: row.subject || 'Health Department request', property: row.propertyName || data.Propiedad || '', sender: row.senderEmail || 'Historical / manual', receivedAt: row.receivedAt, visitDate: dateValue(data['Fecha de Inicio'] || row.visitDate || ''), status: row.status || 'NEW', estimate: row.estimateStatus || 'PENDING', estimateNumber: row.estimateNumber || data.Estimado || '', healthData: data, comments: row.comments || [] };
 }
 const statusLabel = (value: string) => value === 'CLOSED' ? 'Closed' : value === 'IN_PROGRESS' ? 'In progress' : 'New';
+const searchKey = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(API_URL + path, options);
   const data = await response.json().catch(() => ({}));
@@ -40,6 +41,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [filter, setFilter] = useState('All');
+  const [propertySearch, setPropertySearch] = useState('');
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [author, setAuthor] = useState('Health Department');
@@ -56,7 +58,10 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
     const timer = window.setInterval(() => setClock(new Date()), 60000);
     return () => window.clearInterval(timer);
   }, []);
-  const filtered = useMemo(() => tickets.filter((ticket) => filter === 'All' || ticket.status === filter), [tickets, filter]);
+  const filtered = useMemo(() => {
+    const query = searchKey(propertySearch);
+    return tickets.filter((ticket) => (filter === 'All' || ticket.status === filter) && (!query || searchKey(ticket.property).includes(query)));
+  }, [tickets, filter, propertySearch]);
   const upcoming = useMemo(() => tickets.map((ticket) => ({ ticket, ...inspectionAlertDate(ticket) })).filter(({ ticket, date }) => ticket.status !== 'CLOSED' && date && daysUntilInspection(date, clock) >= 0).sort((a, b) => a.date.localeCompare(b.date)), [tickets, clock]);
   const urgent = upcoming.filter(({ date }) => daysUntilInspection(date, clock) <= 10);
   function newTicket() {
@@ -128,7 +133,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
     {message && <p role="status" className="health-sync-message">{message}</p>}
     {urgent.length > 0 && <div className="health-alert-banner"><span className="health-alert-icon">!</span><div><strong>{urgent.length} reinspections within 10 days</strong><p>Based only on assigned reinspection deadlines.</p></div></div>}
     <div className="health-main-grid">
-      <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div>
+      <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><div className="health-ticket-filters"><input type="search" aria-label="Search by property name" placeholder="Search property" value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} /><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div></div>
         <div className="health-ticket-list">{filtered.length === 0 && <p className="health-empty">No tickets to display.</p>}{filtered.map((ticket) => <article className="health-ticket" key={ticket.id}>
           <div className="health-ticket-top"><span className="health-ticket-id">{ticket.id}</span><span className={'health-status health-status-' + statusLabel(ticket.status).toLowerCase().replace(' ', '-')}>{statusLabel(ticket.status)}</span></div>
           <h3><button className="health-property-link" onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}>{ticket.property || 'Select property'}</button></h3>
