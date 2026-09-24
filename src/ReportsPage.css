@@ -216,3 +216,14 @@
 .reports-page h4,
 .reports-page h5,
 .reports-page h6 { color: #111820; }
+.reports-page .reports-header p,
+.reports-page .reports-filter-heading p,
+.reports-page .reports-section-heading p,
+.reports-page .reports-kpis span,
+.reports-page .reports-kpis small,
+.reports-page .reports-filter-grid label > span,
+.reports-page .reports-distribution-tabs button,
+.reports-page .reports-muted,
+.reports-page .reports-empty { color: #111820; }
+.reports-table-download-button { border: 1px solid var(--reports-line); border-radius: 9px; padding: 8px 11px; background: white; color: #111820; cursor: pointer; font-size: 10px; font-weight: 850; }
+.reports-table-download-button:hover { background: #f4fafc; }
