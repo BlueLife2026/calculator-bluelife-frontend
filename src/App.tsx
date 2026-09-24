@@ -667,6 +667,7 @@ async function uploadWaterBodyPhotoFiles(
 
 function App() {
   const [activeArea, setActiveArea] = useState<AppArea>(initialAppArea);
+  const [healthUnassignedOnly, setHealthUnassignedOnly] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return window.localStorage.getItem('bluelife-sidebar-collapsed') === 'true'; }
     catch { return false; }
@@ -2307,8 +2308,9 @@ function App() {
     }
   }
 
-  function navigateToArea(area: AppArea) {
+  function navigateToArea(area: AppArea, options?: { healthUnassignedOnly?: boolean }) {
     setActiveArea(area);
+    setHealthUnassignedOnly(area === 'health' && Boolean(options?.healthUnassignedOnly));
     setSelectedProperty(null);
     setShowDeleted(false);
   }
@@ -2642,12 +2644,12 @@ function App() {
   }
 
   if (activeArea === 'estimates') return renderEstimatesPage();
-  if (activeArea === 'health') return <HealthDepartmentPage sidebar={renderAppSidebar()} properties={properties.map((property) => ({ id: property.id, name: property.name }))} />;
+  if (activeArea === 'health') return <HealthDepartmentPage sidebar={renderAppSidebar()} properties={properties.map((property) => ({ id: property.id, name: property.name }))} unassignedOnly={healthUnassignedOnly} onClearUnassignedFilter={() => setHealthUnassignedOnly(false)} />;
   if (activeArea === 'reports') return <ReportsPage sidebar={renderAppSidebar()} properties={properties.map((property) => ({ id: property.id, name: property.name }))} />;
   if (activeArea === 'chemicals') {
     return <ChemicalsPage sidebar={renderAppSidebar()} />;
   }
-  if (activeArea === 'home') return <PropertyHistoryPage sidebar={renderAppSidebar()} properties={properties} onOpenHealth={() => navigateToArea('health')} />;
+  if (activeArea === 'home') return <PropertyHistoryPage sidebar={renderAppSidebar()} properties={properties} onOpenHealth={() => navigateToArea('health', { healthUnassignedOnly: true })} />;
   if (activeArea === 'operations' || activeArea === 'finance') {
     return renderAreaLanding(activeArea);
   }
