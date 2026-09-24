@@ -29,7 +29,7 @@ export function indexPropertyHealthTickets(properties: Array<{ id: string; name:
   let unmatched = 0;
   for (const ticket of tickets) {
     if (ticket.deletedAt) continue;
-    const key = propertyNameKey(ticket.propertyName?.trim() || ticket.healthData?.Propiedad || '');
+    const key = propertyNameKey(ticket.propertyName?.trim() || '');
     const candidates = names.get(key);
     if (!key || candidates?.length !== 1) { unmatched++; continue; }
     byProperty.get(candidates[0])!.push(ticket);

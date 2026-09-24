@@ -26,10 +26,15 @@ function mapTicket(row: Record<string, any>): Ticket {
     if (typeof data[field] === 'string') data[field] = englishHealthStatus(data[field]);
   }
   if (typeof data.Quimico === 'string') data.Quimico = JSON.stringify(asList(data.Quimico).map(englishChemical));
-  return { id: row.ticketNumber, subject: row.subject || 'Health Department request', property: row.propertyName || data.Propiedad || '', sender: row.senderEmail || 'Historical / manual', receivedAt: row.receivedAt, visitDate: dateValue(data['Fecha de Inicio'] || row.visitDate || ''), status: row.status || 'NEW', estimate: row.estimateStatus || 'PENDING', estimateNumber: row.estimateNumber || data.Estimado || '', healthData: data, comments: row.comments || [] };
+  return { id: row.ticketNumber, subject: row.subject || 'Health Department request', property: row.propertyName || '', sender: row.senderEmail || 'Historical / manual', receivedAt: row.receivedAt, visitDate: dateValue(data['Fecha de Inicio'] || row.visitDate || ''), status: row.status || 'NEW', estimate: row.estimateStatus || 'PENDING', estimateNumber: row.estimateNumber || data.Estimado || '', healthData: data, comments: row.comments || [] };
 }
 const statusLabel = (value: string) => value === 'CLOSED' ? 'Closed' : value === 'IN_PROGRESS' ? 'In progress' : 'New';
 const searchKey = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+function ticketTitle(ticket: Ticket) {
+  const importedName = ticket.healthData.Propiedad?.trim();
+  if (importedName) return importedName;
+  return ticket.subject.replace(/^Health Department inspection\s*-\s*/i, '').trim() || 'Health Department inspection';
+}
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(API_URL + path, options);
   const data = await response.json().catch(() => ({}));
@@ -47,6 +52,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
   const [author, setAuthor] = useState('Health Department');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [assigningProperty, setAssigningProperty] = useState<string | null>(null);
   const [clock, setClock] = useState(() => new Date());
   const [deleting, setDeleting] = useState<Ticket | null>(null);
   const [email, setEmail] = useState('');
@@ -75,7 +81,7 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
     event.preventDefault(); if (!editing || busy) return;
     setBusy(true); setMessage('');
     try {
-      const data = { ...editing.healthData, Propiedad: editing.property, 'Fecha de Inicio': editing.visitDate, Estimado: editing.estimate === 'REQUIRED' ? editing.estimateNumber : '' };
+      const data = { ...editing.healthData, Propiedad: editing.healthData.Propiedad?.trim() || editing.property, 'Fecha de Inicio': editing.visitDate, Estimado: editing.estimate === 'REQUIRED' ? editing.estimateNumber : '' };
       const row = await request('/health-department/tickets' + (editing.id ? '/' + encodeURIComponent(editing.id) : ''), {
         method: editing.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propertyName: editing.property, visitDate: editing.visitDate || null, status: editing.status, estimateStatus: editing.estimate, estimateNumber: editing.estimate === 'REQUIRED' ? editing.estimateNumber : '', healthData: data }),
@@ -84,6 +90,18 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
       setTickets((current) => editing.id ? current.map((ticket) => ticket.id === editing.id ? saved : ticket) : [saved, ...current]);
       setEditing(null); setMessage('Ticket saved.');
     } catch (error) { setMessage((error as Error).message); } finally { setBusy(false); }
+  }
+  async function assignProperty(ticket: Ticket, propertyName: string) {
+    if (assigningProperty) return;
+    setAssigningProperty(ticket.id); setMessage('');
+    try {
+      const row = await request('/health-department/tickets/' + encodeURIComponent(ticket.id), {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ propertyName }),
+      });
+      const saved = mapTicket({ ...row, comments: ticket.comments });
+      setTickets((current) => current.map((item) => item.id === ticket.id ? saved : item));
+      setMessage(propertyName ? 'Property assigned.' : 'Property assignment removed.');
+    } catch (error) { setMessage((error as Error).message); } finally { setAssigningProperty(null); }
   }
   async function sync() {
     setBusy(true); setMessage('');
@@ -136,8 +154,9 @@ export function HealthDepartmentPage({ sidebar, properties }: { sidebar: ReactNo
       <section className="health-card health-tickets-card"><div className="health-card-heading"><div><h2>Ticket inbox</h2><p>Inspection reports and follow-up.</p></div><div className="health-ticket-filters"><input type="search" aria-label="Search by property name" placeholder="Search property" value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} /><select aria-label="Filter tickets" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option value="NEW">New</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select></div></div>
         <div className="health-ticket-list">{filtered.length === 0 && <p className="health-empty">No tickets to display.</p>}{filtered.map((ticket) => <article className="health-ticket" key={ticket.id}>
           <div className="health-ticket-top"><span className="health-ticket-id">{ticket.id}</span><span className={'health-status health-status-' + statusLabel(ticket.status).toLowerCase().replace(' ', '-')}>{statusLabel(ticket.status)}</span></div>
-          <h3><button className="health-property-link" onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}>{ticket.property || 'Select property'}</button></h3>
-          <div className="health-ticket-meta"><span>{ticket.subject}</span><span>Received {new Date(ticket.receivedAt).toLocaleDateString('en-US')}</span></div>{summary(ticket)}
+          <h3>{ticketTitle(ticket)}</h3>
+          <label className="health-ticket-property-select"><span>Property</span><select aria-label={`Property for ${ticketTitle(ticket)}`} value={ticket.property} disabled={assigningProperty === ticket.id} onChange={(event) => void assignProperty(ticket, event.target.value)}><option value="">Select property</option>{ticket.property && !properties.some((property) => property.name === ticket.property) && <option>{ticket.property}</option>}{properties.map((property) => <option key={property.id} value={property.name}>{property.name}</option>)}</select>{assigningProperty === ticket.id && <small>Saving…</small>}</label>
+          <div className="health-ticket-meta"><span>Received {new Date(ticket.receivedAt).toLocaleDateString('en-US')}</span></div>{summary(ticket)}
           <div className="health-ticket-actions"><button className="health-estimate-action" onClick={() => setEditing({ ...ticket, healthData: { ...ticket.healthData } })}>Edit ticket</button><button className="health-comments-button" onClick={() => { setOpenComments(openComments === ticket.id ? null : ticket.id); setDraft(''); }}>Comments ({ticket.comments.length})</button><button className="health-delete-button" onClick={() => { setMessage(''); setDeleting(ticket); }}>Delete ticket</button></div>
           {openComments === ticket.id && <div className="health-comments-panel"><div className="health-comments-list">{ticket.comments.map((comment) => <div className="health-comment" key={comment.id}><strong>{comment.author}</strong><small> {new Date(comment.createdAt).toLocaleString()}</small><p>{comment.body}</p></div>)}</div><form className="health-comment-form" onSubmit={(event) => void addComment(event, ticket)}><input aria-label="Comment author" required value={author} onChange={(event) => setAuthor(event.target.value)} /><textarea aria-label="Comment" required rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="secondary-button" disabled={busy}>Add comment</button></form></div>}
         </article>)}</div>
