@@ -15,7 +15,7 @@ type ReportChunkResult = { complete: boolean; nextByte?: number; attachment?: Re
 type Incident = {
   id: string; occurredAt: string; propertyId?: string; propertyName: string; importance: 'HIGH' | 'MEDIUM' | 'LOW';
   description: string; requiresInspector: boolean; status: 'PENDING' | 'SOLVED'; resolution?: string;
-  solvedAt?: string; type: IncidentType; technician: Person; supervisor: Person; inspector?: Person;
+  solvedAt?: string; requiresEstimate?: boolean; estimateNumber?: string | null; type: IncidentType; technician: Person; supervisor: Person; inspector?: Person;
   typeId: string; technicianId: string; supervisorId: string; inspectorId?: string; attachments: ReportAttachment[];
 };
 type Dashboard = { incidents: Incident[]; people: Person[]; types: IncidentType[] };
@@ -73,6 +73,9 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
   const [supervisorHint, setSupervisorHint] = useState('');
   const [solving, setSolving] = useState<Incident | null>(null);
   const [resolution, setResolution] = useState('');
+  const [solvedAt, setSolvedAt] = useState(today());
+  const [requiresEstimate, setRequiresEstimate] = useState(false);
+  const [estimateNumber, setEstimateNumber] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configKind, setConfigKind] = useState<'type' | 'supervisor' | 'inspector' | 'technician'>('supervisor');
@@ -234,10 +237,10 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
     finally { setBusy(false); }
   }
   async function solveIncident(event: FormEvent) {
-    event.preventDefault(); if (!solving || !confirmed || !resolution.trim() || busy) return;
+    event.preventDefault(); if (!solving || !confirmed || !resolution.trim() || !solvedAt || (requiresEstimate && !estimateNumber.trim()) || busy) return;
     setBusy(true); setError('');
     try {
-      const saved = await request<Incident>(`/reports/incidents/${solving.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SOLVED', resolution: resolution.trim() }) });
+      const saved = await request<Incident>(`/reports/incidents/${solving.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SOLVED', resolution: resolution.trim(), solvedAt, requiresEstimate, estimateNumber: requiresEstimate ? estimateNumber.trim() : '' }) });
       setDashboard((current) => ({ ...current, incidents: current.incidents.map((item) => item.id === saved.id ? saved : item) }));
       setSolving(null); setResolution(''); setConfirmed(false);
     } catch (solveError) { setError((solveError as Error).message); }
@@ -349,7 +352,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
         </form>
       </section>
     </div>}
-    {solving&&<div className="modal-backdrop"><section className="property-modal reports-solve-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>CLOSE REPORT</span><h2>{solving.propertyName}</h2></div><button onClick={()=>setSolving(null)} aria-label="Close">×</button></div><div className="reports-solve-summary"><b>{solving.type.name} · {importanceLabel(solving.importance)}</b><p>{solving.description}</p><small>{solving.technician.name} · Supervisor: {solving.supervisor.name}</small></div><form onSubmit={solveIncident}><label><span>What was done?</span><textarea required rows={5} value={resolution} onChange={(event)=>setResolution(event.target.value)} placeholder="Describe the completed work…" /></label><label className="reports-confirm"><input type="checkbox" checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)} /> I confirm that this report has been resolved.</label><div className="modal-actions"><button type="button" className="reports-button reports-button-ghost" onClick={()=>setSolving(null)}>Cancel</button><button className="reports-button reports-button-solved" disabled={!confirmed||!resolution.trim()||busy}>Mark as solved</button></div></form></section></div>}
+    {solving&&<div className="modal-backdrop"><section className="property-modal reports-solve-modal" role="dialog" aria-modal="true"><div className="reports-modal-heading"><div><span>CLOSE REPORT</span><h2>{solving.propertyName}</h2></div><button onClick={()=>setSolving(null)} aria-label="Close">×</button></div><div className="reports-solve-summary"><b>{solving.type.name} · {importanceLabel(solving.importance)}</b><p>{solving.description}</p><small>{solving.technician.name} · Supervisor: {solving.supervisor.name}</small></div><form onSubmit={solveIncident}><label><span>What was done?</span><textarea required rows={5} value={resolution} onChange={(event)=>setResolution(event.target.value)} placeholder="Describe the completed work…" /></label><div className="reports-solve-fields"><label><span>Resolved date</span><input required type="date" value={solvedAt} onChange={(event)=>setSolvedAt(event.target.value)} /></label><fieldset><legend>Requires estimate?</legend><label className="reports-radio"><input type="radio" name="requires-estimate" checked={requiresEstimate} onChange={()=>setRequiresEstimate(true)} />Yes</label><label className="reports-radio"><input type="radio" name="requires-estimate" checked={!requiresEstimate} onChange={()=>{setRequiresEstimate(false);setEstimateNumber('');}} />No</label></fieldset>{requiresEstimate&&<label><span>Estimate number</span><input required value={estimateNumber} onChange={(event)=>setEstimateNumber(event.target.value)} placeholder="Enter estimate number" /></label>}</div><label className="reports-confirm"><input type="checkbox" checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)} /> I confirm that this report has been resolved.</label><div className="modal-actions"><button type="button" className="reports-button reports-button-ghost" onClick={()=>setSolving(null)}>Cancel</button><button className="reports-button reports-button-solved" disabled={!confirmed||!resolution.trim()||!solvedAt||(requiresEstimate&&!estimateNumber.trim())||busy}>Mark as solved</button></div></form></section></div>}
     {settingsOpen&&<div className="modal-backdrop"><section className="property-modal reports-settings-modal" role="dialog" aria-modal="true">
       <div className="reports-modal-heading"><div><span>REPORTS SETUP</span><h2>Configuration lists</h2></div><button onClick={()=>setSettingsOpen(false)} aria-label="Close">×</button></div>
       <p className="reports-settings-intro">Names live here, not in the form. Renaming an item updates the history automatically.</p>
@@ -378,7 +381,7 @@ export function ReportsPage({ sidebar, properties }: { sidebar: ReactNode; prope
       <td className="reports-description">{incident.description}{incident.resolution && <small><b>DONE</b>{incident.resolution}</small>}{incident.attachments?.length > 0 && <AttachmentLinks attachments={incident.attachments} />}</td>
       <td>{incident.inspector?.name ?? <span className="reports-muted">Not applicable</span>}</td><td>{incident.technician.name}</td><td>{incident.supervisor.name}</td>
       <td><span className={`reports-status reports-status-${incident.status.toLowerCase()}`}>{statusLabel(incident.status)}</span></td>
-      <td className="reports-action-cell"><div className="reports-row-actions">{incident.status === 'PENDING' ? <button className="solve" onClick={() => { setSolving(incident); setResolution(incident.resolution ?? ''); setConfirmed(false); }}>✓ Solve</button> : <button onClick={() => void reopen(incident)}>Reopen</button>}</div></td>
+      <td className="reports-action-cell"><div className="reports-row-actions">{incident.status === 'PENDING' ? <button className="solve" onClick={() => { setSolving(incident); setResolution(incident.resolution ?? ''); setSolvedAt(today()); setRequiresEstimate(incident.requiresEstimate ?? false); setEstimateNumber(incident.estimateNumber ?? ''); setConfirmed(false); }}>✓ Solve</button> : <button onClick={() => void reopen(incident)}>Reopen</button>}</div></td>
       <td className="reports-edit-delete-cell" colSpan={2}><div className="reports-row-actions reports-edit-delete-actions"><button onClick={() => openEdit(incident)}>Edit</button><button className="danger" onClick={() => void removeIncident(incident)}>Delete</button></div></td>
     </tr>;
   }
